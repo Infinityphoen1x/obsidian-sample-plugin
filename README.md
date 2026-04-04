@@ -12,6 +12,23 @@ This sample plugin demonstrates some of the basic functionality the plugin API c
 - Registers a global click event and output 'click' to the console.
 - Registers a global interval which logs 'setInterval' to the console.
 
+## Quick Installation
+
+For detailed setup instructions, see [INSTALL.md](INSTALL.md).
+
+### Quick Start (All Platforms)
+
+```bash
+# Unix/Linux/macOS
+bash setup.sh
+
+# Windows
+setup.bat
+
+# Or install to a specific vault
+bash setup.sh /path/to/vault
+```
+
 ## First time developing plugins?
 
 Quick starting guide for new plugin devs:

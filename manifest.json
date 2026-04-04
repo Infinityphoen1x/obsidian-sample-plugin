@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
+	"id": "metadata-organizer",
+	"name": "Metadata Organizer",
+	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"description": "Visual metadata organizer for narrative projects. Scan documents, extract entities, create groups, and manage timelines with an interactive UI. Desktop-only with advanced organization features.",
+	"author": "Metadata Organizer Contributors",
+	"authorUrl": "https://github.com/obsidianmd/obsidian-sample-plugin",
 	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

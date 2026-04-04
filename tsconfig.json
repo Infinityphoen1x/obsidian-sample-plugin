@@ -16,6 +16,8 @@
 		"strictNullChecks": true,
 		"strictBindCallApply": true,
 		"allowSyntheticDefaultImports": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
 		"useUnknownInCatchVariables": true,
 		"lib": [
 			"DOM",
@@ -26,5 +28,9 @@
 	},
 	"include": [
 		"src/**/*.ts"
+	],
+	"exclude": [
+		"src/**/__tests__/**",
+		"node_modules"
 	]
 }
