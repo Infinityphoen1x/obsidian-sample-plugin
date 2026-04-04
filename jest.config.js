@@ -1,13 +1,14 @@
 /** @type {import('jest').Config} */
 export default {
 	preset: 'ts-jest',
-	testEnvironment: 'node',
+	testEnvironment: 'jsdom',
 	roots: ['<rootDir>/src'],
 	testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
 	moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 	extensionsToTreatAsEsm: ['.ts'],
 	moduleNameMapper: {
 		'^(\\.{1,2}/.*)\\.js$': '$1',
+		'^obsidian$': '<rootDir>/__mocks__/obsidian.js',
 	},
 	collectCoverageFrom: [
 		'src/**/*.ts',
