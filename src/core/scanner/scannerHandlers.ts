@@ -1,0 +1,240 @@
+/**
+ * Document Scanner Handlers
+ *
+ * Integration layer for document scanning with key term selection.
+ * Handles full workflow: scan → select key terms → apply → persist entities.
+ */
+
+import { App, Notice, TFile, Vault } from 'obsidian';
+import { PluginSettings } from '../../types';
+import { scanMarkdown, generateFrontmatter, prependFrontmatter } from '../scanner/documentScanner';
+import { wikiLinkTemporalTerms } from '../scanner/temporalTagger';
+import { KeyTermModal } from '../../ui/modals/keyTermModal';
+import { log } from '../../protocol/logManager';
+import { EntityStore, getOrCreateEntity } from '../metadata/entityStore';
+
+/**
+ * Handle complete document scanning workflow
+ * 1. Scan document for tokens and temporal terms
+ * 2. Show KeyTermModal for user selection
+ * 3. Create entities for selected key terms
+ * 4. Wikilink temporal terms
+ * 5. Generate and prepend frontmatter
+ * 6. Save file with updates
+ */
+export async function handleDocumentScan(
+	app: App,
+	vault: Vault,
+	file: TFile,
+	settings: PluginSettings,
+	entityStore?: EntityStore
+): Promise<void> {
+	try {
+		// Read file content
+		const content = await vault.read(file);
+		if (!content) {
+			new Notice('⚠️ File is empty');
+			return;
+		}
+
+		new Notice(`📄 Scanning "${file.basename}"...`);
+
+		// Scan the document
+		const scanResult = await scanMarkdown(file, content);
+
+		// Get top tokens by frequency for suggestions
+		const suggestedTerms = scanResult.tokens.slice(0, 50).map(t => t.word);
+
+		if (suggestedTerms.length === 0) {
+			new Notice('⚠️ No tokens found to suggest');
+			return;
+		}
+
+		// Show KeyTermModal for user selection
+		await showKeyTermSelectionModal(
+			app,
+			suggestedTerms,
+			scanResult.wordCount,
+			async (selectedKeyTerms) => {
+				// Process selected key terms
+				await processKeyTermSelection(
+					app,
+					vault,
+					file,
+					content,
+					scanResult,
+					selectedKeyTerms,
+					settings,
+					entityStore
+				);
+			},
+			() => {
+				// On cancel
+				new Notice('Document scanning cancelled');
+			},
+			settings
+		);
+	} catch (error) {
+		console.error('Error scanning document:', error);
+		new Notice(`❌ Error scanning document: ${error}`);
+	}
+}
+
+/**
+ * Show key term selection modal
+ */
+function showKeyTermSelectionModal(
+	app: App,
+	suggestedTerms: string[],
+	wordCount: number,
+	onApply: (selectedTerms: Set<string>) => Promise<void>,
+	onCancel: () => void,
+	settings: PluginSettings
+): Promise<void> {
+	return new Promise((resolve) => {
+		const modal = new KeyTermModal(
+			app,
+			suggestedTerms,
+			settings.chunkSize,
+			async (selection) => {
+				if (selection.selected.size > 0) {
+					await onApply(selection.selected);
+				} else {
+					new Notice('⚠️ No key terms selected');
+				}
+				resolve();
+			},
+			() => {
+				onCancel();
+				resolve();
+			}
+		);
+
+		// Add info header to modal
+		modal.contentEl.prepend(
+			(() => {
+				const header = document.createElement('div');
+				header.style.cssText = 'margin-bottom: 1rem; padding: 0.5rem; background: var(--background-secondary); border-radius: 4px;';
+				header.innerHTML = `
+					<small style="color: var(--text-muted);">
+						<strong>Document scan results:</strong><br>
+						Word count: ${wordCount.toLocaleString()}<br>
+						Suggested key terms: ${suggestedTerms.length}
+					</small>
+				`;
+				return header;
+			})()
+		);
+
+		modal.open();
+	});
+}
+
+/**
+ * Process selected key terms and update document
+ */
+async function processKeyTermSelection(
+	app: App,
+	vault: Vault,
+	file: TFile,
+	content: string,
+	scanResult: any,
+	selectedKeyTerms: Set<string>,
+	settings: PluginSettings,
+	entityStore?: EntityStore
+): Promise<void> {
+	try {
+		let updatedContent = content;
+
+		// Wikilink temporal terms
+		if (scanResult.temporalTerms.length > 0) {
+			updatedContent = wikiLinkTemporalTerms(updatedContent, scanResult.temporalTerms);
+		}
+
+		// Wikilink selected key terms
+		for (const term of selectedKeyTerms) {
+			const regex = new RegExp(`\\b${term}\\b`, 'gi');
+			const matches = Array.from(updatedContent.matchAll(regex));
+
+			// Replace in reverse order to maintain positions
+			for (let i = matches.length - 1; i >= 0; i--) {
+				const match = matches[i];
+				if (match && match.index !== undefined) {
+					const start = match.index;
+					const end = match.index + match[0].length;
+					const before = updatedContent.substring(0, start);
+					const after = updatedContent.substring(end);
+					updatedContent = `${before}[[${term}]]${after}`;
+				}
+			}
+		}
+
+		// Generate frontmatter with selected key terms
+		const frontmatter = generateFrontmatter(scanResult, Array.from(selectedKeyTerms));
+
+		// Prepend frontmatter to content
+		updatedContent = frontmatter + updatedContent;
+
+		// Write updated content back to file
+		await vault.modify(file, updatedContent);
+
+		// Create/update entities in entity store
+		if (entityStore) {
+			let newCount = 0;
+			let updatedCount = 0;
+
+			for (const keyTerm of selectedKeyTerms) {
+				const existing = entityStore.findByName(keyTerm);
+				if (!existing) {
+					const entity = getOrCreateEntity(entityStore, keyTerm);
+					entity.sources = [{
+						document: file.path,
+						lineNumbers: scanResult.tokens
+							.find((t: any) => t.word === keyTerm)
+							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
+					}];
+					entity.tags = [...(scanResult.isChapter ? ['chapter'] : ['document']), ...scanResult.temporalTerms.map((t: any) => `temporal:${t.term}`)];
+					entityStore.updateEntity(entity.id, entity);
+					newCount++;
+				} else {
+					existing.frequency = (existing.frequency || 1) + 1;
+					existing.sources.push({
+						document: file.path,
+						lineNumbers: scanResult.tokens
+							.find((t: any) => t.word === keyTerm)
+							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
+					});
+					entityStore.updateEntity(existing.id, existing);
+					updatedCount++;
+				}
+			}
+
+			// Persist entities
+			await entityStore.persist();
+
+			// Log the scan
+			await log(
+				vault,
+				settings,
+				'document-scanning',
+				`Scanned and processed "${file.basename}"`,
+				{
+					filePath: file.path,
+					wordCount: scanResult.wordCount,
+					keyTermsSelected: selectedKeyTerms.size,
+					temporalTermsFound: scanResult.temporalTerms.length,
+					newEntities: newCount,
+					updatedEntities: updatedCount,
+					isChapter: scanResult.isChapter,
+				}
+			);
+
+			new Notice(`✅ Scan complete: ${newCount} new, ${updatedCount} updated entities, ${Array.from(selectedKeyTerms).length} key terms wikilinked`);
+		} else {
+			new Notice(`✅ Document updated: ${Array.from(selectedKeyTerms).length} key terms wikilinked, frontmatter added`);
+		}
+	} catch (error) {
+		console.error('Error processing key terms:', error);
+		new Notice(`❌ Error processing key terms: ${error}`);
+	}
+}

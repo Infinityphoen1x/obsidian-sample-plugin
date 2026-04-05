@@ -3,7 +3,7 @@ import { PluginSettings, DEFAULT_SETTINGS } from "./types";
 import { MetadataOrganizerSettingTab } from "./settings";
 import { initializeProtocolFolder } from "./protocol/protocolManager";
 import { log } from "./protocol/logManager";
-import { scanMarkdown } from "./core/scanner/documentScanner";
+import { handleDocumentScan } from "./core/scanner/scannerHandlers";
 import { EntityStore, getOrCreateEntity } from "./core/metadata/entityStore";
 import { buildIndex, saveIndex } from "./core/metadata/indexFile";
 import { handleMetadataReview, handleSubMetadata, handleTimeline } from "./ui/handlers/modalHandlers";
@@ -157,91 +157,13 @@ export default class MetadataOrganizerPlugin extends Plugin {
 			return;
 		}
 
-		try {
-			// Read file content
-			const content = await this.app.vault.read(file);
-			if (!content) {
-				new Notice("⚠️ File is empty");
-				return;
-			}
-
-			// Show scanning notice
-			new Notice(`📄 Scanning "${file.basename}"...`);
-
-			// Scan the document
-			const scanResult = await scanMarkdown(file, content);
-
-			// Get top tokens by frequency
-			const topTokens = scanResult.tokens.slice(0, 50); // Top 50 terms
-			let newEntitiesCount = 0;
-			let updatedEntitiesCount = 0;
-
-			// Create or update entities
-			for (const token of topTokens) {
-				const existing = this.entityStore.findByName(token.word);
-				if (!existing) {
-					const entity = getOrCreateEntity(this.entityStore, token.word);
-					// Update frequency and sources
-					entity.frequency = token.frequency;
-					entity.sources = [
-						{
-							document: file.path,
-							lineNumbers: token.positions.map((p) => {
-								// Estimate line number (rough approximation)
-								return content.substring(0, p).split("\n").length;
-							}),
-						},
-					];
-					entity.tags = scanResult.isChapter ? ["chapter"] : ["document"];
-					this.entityStore.updateEntity(entity.id, entity);
-					newEntitiesCount++;
-				} else {
-					// Update existing entity with new frequency and sources
-					existing.frequency += token.frequency;
-					existing.sources.push({
-						document: file.path,
-						lineNumbers: token.positions.map((p) => {
-							return content.substring(0, p).split("\n").length;
-						}),
-					});
-					this.entityStore.updateEntity(existing.id, existing);
-					updatedEntitiesCount++;
-				}
-			}
-
-			// Persist entities
-			await this.entityStore.persist();
-
-			// Log the scan session
-			await log(
-				this.app.vault,
-				this.settings,
-				"document-scanning",
-				`Scanned "${file.basename}"`,
-				{
-					filePath: file.path,
-					wordCount: scanResult.wordCount,
-					tokensFound: scanResult.uniqueTokenCount,
-					newEntities: newEntitiesCount,
-					updatedEntities: updatedEntitiesCount,
-					isChapter: scanResult.isChapter,
-					temporalTermsFound: scanResult.temporalTerms.length,
-				}
-			);
-
-			// Show completion notice
-			new Notice(
-				`✅ Scan complete: ${newEntitiesCount} new, ${updatedEntitiesCount} updated`
-			);
-
-			console.log(
-				`Scanned ${file.basename}: ${newEntitiesCount} new entities, ` +
-				`${updatedEntitiesCount} updated`
-			);
-		} catch (error) {
-			console.error("Error scanning document:", error);
-			new Notice(`❌ Error scanning document: ${error}`);
-		}
+		await handleDocumentScan(
+			this.app,
+			this.app.vault,
+			file,
+			this.settings,
+			this.entityStore
+		);
 	}
 
 	async loadSettings() {
