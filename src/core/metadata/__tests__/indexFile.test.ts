@@ -373,7 +373,7 @@ describe("IndexFile - getEntitiesByGroup", () => {
 	test("should return entity IDs as array", () => {
 		const result = getEntitiesByGroup(index, "characters");
 		expect(Array.isArray(result)).toBe(true);
-		result.forEach((id) => expect(typeof id).toBe("string");
+		result.forEach((id) => expect(typeof id).toBe("string"));
 	});
 
 	test("should handle group with single entity", () => {

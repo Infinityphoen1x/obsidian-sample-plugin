@@ -6,15 +6,17 @@ import { Entity, PluginSettings, SourceRef } from "../../../types";
 export function createMockSettings(overrides?: Partial<PluginSettings>): PluginSettings {
 	return {
 		protocolFolderName: ".metadata",
-		masterMetadataFile: "master.csv",
+		masterMetadataFile: "master-entities.csv",
 		indexFile: "index.json",
 		desktopOnly: true,
-		logLevel: "info",
-		chunkSize: 1000,
 		mobileWarning: false,
-		enableAutoSync: false,
-		syncInterval: 3600000,
-		extractionRules: [],
+		logLevel: "info",
+		chunkSize: 100,
+		timelineMode: "static",
+		showDescriptions: true,
+		autoFormatFrontmatter: false,
+		enableLogging: false,
+		logRetentionDays: 30,
 		...overrides,
 	};
 }
