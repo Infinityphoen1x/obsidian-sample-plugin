@@ -6,23 +6,7 @@
  */
 
 import { App, Modal, Setting } from 'obsidian';
-
-export interface TimelineEvent {
-	id: string;
-	text: string;
-	timestamp?: number;
-	temporalTerms: string[];
-	sourceDocument: string;
-	isCustom: boolean;
-}
-
-export interface SnapshotTimeline {
-	id: string;
-	name: string;
-	events: TimelineEvent[];
-	createdAt: number;
-	sourceDocument: string;
-}
+import { TimelineEvent, SnapshotTimeline } from '../../types';
 
 export interface TimelineModalResult {
 	snapshot: SnapshotTimeline | null;
@@ -57,9 +41,16 @@ export class TimelineModal extends Modal {
 	addCustomEvent(text: string): void {
 		const event: TimelineEvent = {
 			id: `event_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+			sentence: text,
 			text,
-			temporalTerms: [],
+			source: {
+				document: this.sourceDocument,
+				line: 0,
+			},
 			sourceDocument: this.sourceDocument,
+			temporalTerms: [],
+			order: this.events.length,
+			status: 'draft' as const,
 			isCustom: true,
 		};
 		this.events.push(event);
@@ -113,7 +104,7 @@ export class TimelineModal extends Modal {
 			name: this.snapshotName,
 			events: this.events,
 			createdAt: Date.now(),
-			sourceDocument: this.sourceDocument,
+			documentSource: this.sourceDocument,
 		};
 	}
 

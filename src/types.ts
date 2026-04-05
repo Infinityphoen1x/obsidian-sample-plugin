@@ -82,15 +82,19 @@ export interface ChildNote {
 
 export interface TimelineEvent {
   id: string; // "evt_xyz_0001"
-  sentence: string; // Full sentence from document
+  sentence: string; // Full sentence from document (primary field)
+  text?: string; // UI convenience: same as sentence
   source: {
     document: string; // "Ch1.md"
     line: number;
   };
+  sourceDocument?: string; // UI convenience: duplicates source.document
   temporalTerms: string[]; // ["then", "past"]
+  timestamp?: number; // UI convenience: optional timestamp
   order: number; // Position in timeline
   color?: string; // "#FF5733"
   status: "draft" | "confirmed";
+  isCustom?: boolean; // Flag for user-created events (modals)
 }
 
 export interface SnapshotTimeline {
