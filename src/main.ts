@@ -6,6 +6,8 @@ import { log } from "./protocol/logManager";
 import { scanMarkdown } from "./core/scanner/documentScanner";
 import { EntityStore, getOrCreateEntity } from "./core/metadata/entityStore";
 import { buildIndex, saveIndex } from "./core/metadata/indexFile";
+import { handleMetadataReview, handleSubMetadata, handleTimeline } from "./ui/handlers/modalHandlers";
+import { TimelineEvent } from "./types";
 
 /**
  * Metadata Organizer Plugin
@@ -89,30 +91,62 @@ export default class MetadataOrganizerPlugin extends Plugin {
 			},
 		});
 
-		// Metadata Review command (Phase 2)
+		// Metadata Review command
 		this.addCommand({
 			id: "metadata-organizer-review",
 			name: "Review and organize metadata",
-			callback: () => {
-				new Notice("Metadata review modal - coming in Phase 2");
+			callback: async () => {
+				if (!this.entityStore) {
+					new Notice("❌ Entity store not initialized");
+					return;
+				}
+
+				const entities = this.entityStore.getAllEntities();
+				if (entities.length === 0) {
+					new Notice("⚠️ No entities found. Scan a document first.");
+					return;
+				}
+
+				await handleMetadataReview(
+					this.app,
+					this.app.vault,
+					entities,
+					this.settings,
+					this.entityStore
+				);
 			},
 		});
 
-		// Sub-metadata command (Phase 3)
+		// Sub-metadata command
 		this.addCommand({
 			id: "metadata-organizer-sub-metadata",
 			name: "Create entity notes",
-			callback: () => {
-				new Notice("Entity note creation - coming in Phase 3");
+			checkCallback: (checking: boolean) => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView && markdownView.file) {
+					// Check if file is a parent note (has type: parent in frontmatter)
+					if (!checking) {
+						this.handleSubMetadataCommand(markdownView.file);
+					}
+					return true;
+				}
+				return false;
 			},
 		});
 
-		// Timeline command (Phase 4)
+		// Timeline command
 		this.addCommand({
 			id: "metadata-organizer-timeline",
 			name: "Open timeline editor",
-			callback: () => {
-				new Notice("Timeline editor - coming in Phase 4");
+			checkCallback: (checking: boolean) => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (markdownView && markdownView.file) {
+					if (!checking) {
+						this.handleTimelineCommand(markdownView.file);
+					}
+					return true;
+				}
+				return false;
 			},
 		});
 	}
@@ -217,4 +251,67 @@ export default class MetadataOrganizerPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+
+	private async handleSubMetadataCommand(file: TFile): Promise<void> {
+		if (!this.entityStore) {
+			new Notice("❌ Entity store not initialized");
+			return;
+		}
+
+		// For now, get all entities as keywords
+		// In production: parse frontmatter to get group-specific keywords
+		const entities = this.entityStore.getAllEntities();
+		if (entities.length === 0) {
+			new Notice("⚠️ No entities found. Scan a document first.");
+			return;
+		}
+
+		// Determine folder from file path
+		const folder = file.parent?.path || "entities";
+
+		await handleSubMetadata(
+			this.app,
+			this.app.vault,
+			entities,
+			folder + "/",
+			file.path,
+			this.settings
+		);
+	}
+
+	private async handleTimelineCommand(file: TFile): Promise<void> {
+		// Create mock timeline events from document
+		// In production: parse temporal terms from document scan
+		const mockEvents: TimelineEvent[] = [
+			{
+				id: "evt_1",
+				sentence: "First event in the story",
+				text: "First event in the story",
+				source: { document: file.path, line: 1 },
+				temporalTerms: ["once"],
+				order: 0,
+				status: "draft",
+				isCustom: false,
+			},
+			{
+				id: "evt_2",
+				sentence: "Second event unfolds",
+				text: "Second event unfolds",
+				source: { document: file.path, line: 10 },
+				temporalTerms: ["then"],
+				order: 1,
+				status: "draft",
+				isCustom: false,
+			},
+		];
+
+		await handleTimeline(
+			this.app,
+			this.app.vault,
+			mockEvents,
+			file.path,
+			this.settings
+		);
+	}
 }
+
