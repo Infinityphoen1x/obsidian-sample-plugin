@@ -17,6 +17,7 @@ export class KeyTermModal extends Modal {
 	private onApply: (selection: KeyTermSelection) => void;
 	private onCancel: () => void;
 	private blacklistManager: BlacklistManager | null = null;
+	private wordCount: number = 0;
 
 	constructor(
 		app: App,
@@ -24,7 +25,8 @@ export class KeyTermModal extends Modal {
 		termsPerPage: number = 100,
 		onApply: (selection: KeyTermSelection) => void = () => {},
 		onCancel: () => void = () => {},
-		blacklistManager: BlacklistManager | null = null
+		blacklistManager: BlacklistManager | null = null,
+		wordCount: number = 0
 	) {
 		super(app);
 		this.terms = terms;
@@ -32,6 +34,7 @@ export class KeyTermModal extends Modal {
 		this.onApply = onApply;
 		this.onCancel = onCancel;
 		this.blacklistManager = blacklistManager;
+		this.wordCount = wordCount;
 	}
 
 	/**
@@ -155,6 +158,20 @@ export class KeyTermModal extends Modal {
 	 * Get selection stats
 	 */
 	getStats(): { selected: number; rejected: number; remaining: number } {
+		// Ensure selection object is initialized
+		if (!this.selection) {
+			this.selection = {
+				selected: new Set(),
+				rejected: new Set(),
+			};
+		}
+		if (!this.selection.selected) {
+			this.selection.selected = new Set();
+		}
+		if (!this.selection.rejected) {
+			this.selection.rejected = new Set();
+		}
+
 		const remaining = this.terms.length - this.selection.selected.size - this.selection.rejected.size;
 		return {
 			selected: this.selection.selected.size,
@@ -179,6 +196,16 @@ export class KeyTermModal extends Modal {
 	render(): void {
 
 		this.contentEl.empty();
+
+		// Header with document scan results
+		if (this.wordCount > 0) {
+			const headerDiv = this.contentEl.createDiv("key-term-modal-header-info");
+			headerDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.5rem; background: var(--background-secondary); border-radius: 4px;';
+			const small = headerDiv.createEl("small");
+			small.innerHTML = `<strong>📊 Document scan results:</strong><br>` +
+				`Word count: ${this.wordCount.toLocaleString()}<br>` +
+				`Suggested key terms: ${this.terms.length}`;
+		}
 
 		// Header with title and page counter
 		const header = this.contentEl.createDiv("key-term-modal-header");

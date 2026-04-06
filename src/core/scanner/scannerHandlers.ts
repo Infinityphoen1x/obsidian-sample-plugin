@@ -196,23 +196,8 @@ function showKeyTermSelectionModal(
 				onCancel();
 				resolve();
 			},
-			blacklistManager
-		);
-
-		// Add info header to modal
-		modal.contentEl.prepend(
-			(() => {
-				const header = document.createElement('div');
-				header.style.cssText = 'margin-bottom: 1rem; padding: 0.5rem; background: var(--background-secondary); border-radius: 4px;';
-				header.innerHTML = `
-					<small style="color: var(--text-muted);">
-						<strong>Document scan results:</strong><br>
-						Word count: ${wordCount.toLocaleString()}<br>
-						Suggested key terms: ${suggestedTerms.length}
-					</small>
-				`;
-				return header;
-			})()
+			blacklistManager,
+			wordCount // Pass wordCount to modal for displaying in header
 		);
 
 		modal.open();
