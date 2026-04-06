@@ -150,12 +150,43 @@ export class MainPanelView extends ItemView {
 			console.debug(`[Button Click] User clicked button for command: ${command}`);
 			try {
 				console.debug(`[Button] Attempting to execute command: ${command}`);
-				// Execute the command using Obsidian's internal command system
+				
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const commandResult = (this.app as any).commands?.executeCommandById?.(command);
-				if (commandResult instanceof Promise) {
-					await commandResult;
+				const appAny = this.app as any;
+				
+				// Try multiple methods to execute the command
+				// Method 1: Use executeCommandById if available
+				if (typeof appAny.commands?.executeCommandById === 'function') {
+					const result = appAny.commands.executeCommandById(command);
+					if (result instanceof Promise) {
+						await result;
+					}
+					console.debug(`[Button] Command executed via executeCommandById`);
+				} 
+				// Method 2: Find and execute the command callback directly
+				else {
+					const commands = appAny.commands?.commands || {};
+					const cmd = commands[command];
+					if (!cmd) {
+						throw new Error(`Command not found: ${command}`);
+					}
+					if (typeof cmd.callback === 'function') {
+						const result = cmd.callback();
+						if (result instanceof Promise) {
+							await result;
+						}
+						console.debug(`[Button] Command executed via callback`);
+					} else if (typeof cmd.checkCallback === 'function') {
+						const result = cmd.checkCallback(false);
+						if (result instanceof Promise) {
+							await result;
+						}
+						console.debug(`[Button] Command executed via checkCallback`);
+					} else {
+						throw new Error(`Command has no valid callback: ${command}`);
+					}
 				}
+				
 				console.debug(`[Button] Command executed successfully`);
 			} catch (error) {
 				console.error(`[Button] Error executing command ${command}:`, error);

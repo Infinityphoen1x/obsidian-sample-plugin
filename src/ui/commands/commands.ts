@@ -1,46 +1,23 @@
 /**
  * Command registration
  *
- * Registers all commands for the plugin.
- * TODO: Commands to implement in each phase.
+ * NOTE: Actual command implementations are in metadataCommands.ts and mainCommands.ts
+ * This file should not be used - it's kept for reference only.
+ * 
+ * Commands are registered via:
+ * - registerMainCommands() - Opens main panel and timeline views
+ * - registerMetadataCommands() - Scan document, review metadata, timeline, etc.
+ * 
+ * See main.ts registerAllCommands() method for which functions are called.
  */
 
 import { Plugin } from "obsidian";
 
 export function registerCommands(plugin: Plugin): void {
-	// Phase 1: Scan Document
-	plugin.addCommand({
-		id: "scan-document",
-		name: "Scan document for entities",
-		callback: () => {
-			// TODO: Implement document scanning
-		},
-	});
-
-	// Phase 2: Metadata Review
-	plugin.addCommand({
-		id: "review",
-		name: "Review and organize metadata",
-		callback: () => {
-			// TODO: Implement metadata review modal
-		},
-	});
-
-	// Phase 3: Sub-metadata
-	plugin.addCommand({
-		id: "sub-metadata",
-		name: "Create entity notes",
-		callback: () => {
-			// TODO: Implement sub-metadata modal
-		},
-	});
-
-	// Phase 4: Timeline
-	plugin.addCommand({
-		id: "timeline",
-		name: "Open timeline editor",
-		callback: () => {
-			// TODO: Implement timeline UI
-		},
-	});
+	// This function is NOT called by the plugin
+	// All commands are registered by registerMainCommands and registerMetadataCommands instead
+	console.warn(
+		"[Metadata Organizer] registerCommands() called but should not be used. " +
+		"Use registerMainCommands() and registerMetadataCommands() instead."
+	);
 }
