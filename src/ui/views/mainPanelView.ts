@@ -5,13 +5,15 @@
  * Displays buttons for scanning, organizing, and editing metadata
  */
 
-import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Plugin } from "obsidian";
 
 export class MainPanelView extends ItemView {
 	static readonly VIEW_TYPE = "metadata-organizer-main";
+	private plugin?: Plugin;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, plugin?: Plugin) {
 		super(leaf);
+		this.plugin = plugin;
 	}
 
 	getViewType(): string {

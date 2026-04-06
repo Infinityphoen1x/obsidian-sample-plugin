@@ -9,9 +9,11 @@ import { App, Notice, TFile, Vault } from 'obsidian';
 import { PluginSettings } from '../../types';
 import { scanMarkdown, generateFrontmatter, prependFrontmatter } from '../scanner/documentScanner';
 import { wikiLinkTemporalTerms } from '../scanner/temporalTagger';
+import { convertDocxToMarkdown } from '../scanner/docxConverter';
 import { KeyTermModal } from '../../ui/modals/keyTermModal';
 import { log } from '../../protocol/logManager';
 import { EntityStore, getOrCreateEntity } from '../metadata/entityStore';
+import { BlacklistManager } from '../scanner/blacklistManager';
 
 /**
  * Handle complete document scanning workflow
@@ -27,20 +29,76 @@ export async function handleDocumentScan(
 	vault: Vault,
 	file: TFile,
 	settings: PluginSettings,
-	entityStore?: EntityStore
+	entityStore?: EntityStore,
+	blacklistManager?: BlacklistManager | null
 ): Promise<void> {
 	try {
-		// Read file content
-		const content = await vault.read(file);
+		let content: string;
+		let sourceFile = file;
+		
+		// Handle DOCX files
+		if (file.extension === 'docx') {
+			new Notice(`📄 Converting "${file.basename}.docx" to markdown...`);
+			
+			try {
+				// Read DOCX file as binary
+				const docxBuffer = await vault.readBinary(file);
+				
+				// Convert DOCX to Markdown
+				content = await convertDocxToMarkdown(docxBuffer, file.basename);
+				
+				if (!content || content.length === 0) {
+					new Notice('❌ Failed to convert DOCX file - result is empty');
+					return;
+				}
+				
+				// Create markdown file in vault with same name
+				const mdFileName = file.basename + '.md';
+				const mdPath = file.parent ? file.parent.path + '/' + mdFileName : mdFileName;
+				
+				try {
+					// Check if markdown file already exists
+					const existingMd = vault.getFileByPath(mdPath);
+					if (existingMd) {
+						// Update existing markdown
+						await vault.modify(existingMd, content);
+						sourceFile = existingMd;
+					} else {
+						// Create new markdown file
+						const newMd = await vault.create(mdPath, content);
+						sourceFile = newMd;
+				
+						// Open the new markdown file in active editor
+						const leaf = app.workspace.getLeaf(false);
+						await leaf?.openFile(newMd);
+					}
+				} catch (error) {
+					console.error('Error creating markdown file:', error);
+					new Notice('⚠️ Converted content. Could not save markdown file.');
+					// Continue with scanning anyway - content is in memory
+				}
+			} catch (error) {
+				console.error('Error converting DOCX:', error);
+				new Notice(`❌ Failed to convert DOCX file: ${error}`);
+				return;
+			}
+		} else if (file.extension === 'md') {
+			// Handle regular markdown files
+			content = await vault.read(file);
+		} else {
+			new Notice(`⚠️ Unsupported file type: ${file.extension}`);
+			return;
+		}
+		
 		if (!content) {
 			new Notice('⚠️ File is empty');
 			return;
 		}
 
-		new Notice(`📄 Scanning "${file.basename}"...`);
+		new Notice(`📄 Scanning "${sourceFile.basename}"...`);
 
 		// Scan the document
-		const scanResult = await scanMarkdown(file, content);
+		const scanResult = await scanMarkdown(sourceFile, content);
 
 		// Get top tokens by frequency for suggestions
 		const suggestedTerms = scanResult.tokens.slice(0, 50).map(t => t.word);
@@ -60,7 +118,7 @@ export async function handleDocumentScan(
 				await processKeyTermSelection(
 					app,
 					vault,
-					file,
+					sourceFile,
 					content,
 					scanResult,
 					selectedKeyTerms,
@@ -72,7 +130,8 @@ export async function handleDocumentScan(
 				// On cancel
 				new Notice('Document scanning cancelled');
 			},
-			settings
+			settings,
+			blacklistManager
 		);
 	} catch (error) {
 		console.error('Error scanning document:', error);
@@ -89,7 +148,8 @@ function showKeyTermSelectionModal(
 	wordCount: number,
 	onApply: (selectedTerms: Set<string>) => Promise<void>,
 	onCancel: () => void,
-	settings: PluginSettings
+	settings: PluginSettings,
+	blacklistManager?: BlacklistManager | null
 ): Promise<void> {
 	return new Promise((resolve) => {
 		const modal = new KeyTermModal(
@@ -107,7 +167,8 @@ function showKeyTermSelectionModal(
 			() => {
 				onCancel();
 				resolve();
-			}
+			},
+			blacklistManager
 		);
 
 		// Add info header to modal

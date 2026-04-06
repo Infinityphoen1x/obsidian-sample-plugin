@@ -6,6 +6,7 @@
  */
 
 import { Token } from "../../types";
+import { BlacklistManager } from "./blacklistManager";
 
 // Common stop words in English
 const STOP_WORDS = new Set([
@@ -17,6 +18,16 @@ const STOP_WORDS = new Set([
 	"can", "could", "would", "should", "may", "might", "must", "do",
 	"does", "did", "have", "has", "had", "been", "being",
 ]);
+
+let blacklistManager: BlacklistManager | null = null;
+
+/**
+ * Set the blacklist manager for filtering
+ * @param manager The BlacklistManager instance
+ */
+export function setBlacklistManager(manager: BlacklistManager): void {
+	blacklistManager = manager;
+}
 
 /**
  * Extract and count tokens from text
@@ -33,8 +44,8 @@ export function extractTokens(text: string): Token[] {
 	for (const word of words) {
 		const normalized = word.toLowerCase();
 
-		// Skip stop words and very short words
-		if (STOP_WORDS.has(normalized) || normalized.length < 2) {
+		// Skip stop words, very short words, and blacklisted words
+		if (STOP_WORDS.has(normalized) || normalized.length < 2 || (blacklistManager?.isBlacklisted(normalized))) {
 			currentPos += word.length + 1;
 			continue;
 		}

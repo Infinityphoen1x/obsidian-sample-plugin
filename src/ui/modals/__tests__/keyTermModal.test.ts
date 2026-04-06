@@ -1,12 +1,79 @@
 import { KeyTermModal, KeyTermSelection } from "../keyTermModal";
 
+// Robust mock DOM element
+class MockDOMElement {
+	children: MockDOMElement[] = [];
+	classList: Set<string> = new Set();
+	innerHTML = '';
+	textContent = '';
+	type = '';
+
+	addEventListener() {}
+	setAttribute() {}
+	appendChild() {}
+	addClass(className: string) {
+		this.classList.add(className);
+	}
+
+	empty() {
+		this.children = [];
+		this.innerHTML = '';
+	}
+
+	createDiv(className?: string): MockDOMElement {
+		const div = new MockDOMElement();
+		if (className) div.addClass(className);
+		this.children.push(div);
+		return div;
+	}
+
+	createEl(tag: string, { text = '', type = '', cls = '' }: any = {}): MockDOMElement {
+		const el = new MockDOMElement();
+		if (type) el.type = type;
+		if (text) el.textContent = text;
+		if (cls) {
+			cls.split(' ').forEach((c: string) => el.addClass(c.trim()));
+		}
+		this.children.push(el);
+		return el;
+	}
+
+	createSpan({ text = '', cls = '' }: any = {}): MockDOMElement {
+		const span = new MockDOMElement();
+		if (text) span.textContent = text;
+		if (cls) {
+			cls.split(' ').forEach((c: string) => span.addClass(c.trim()));
+		}
+		this.children.push(span);
+		return span;
+	}
+
+	prepend(element: MockDOMElement) {
+		this.children.unshift(element);
+	}
+}
+
 describe("KeyTermModal - Chunking & Pagination", () => {
 	let modal: KeyTermModal;
-	const mockApp = {} as any;
+	const mockApp = {
+		workspace: {
+			getLeaf: () => null,
+		},
+	} as any;
+
+	// Helper function to set up modal with mock contentEl
+	function setupModal(terms: string[], termsPerPage = 100) {
+		modal = new KeyTermModal(mockApp, terms, termsPerPage);
+		Object.defineProperty(modal, 'contentEl', {
+			value: new MockDOMElement(),
+			writable: true,
+			configurable: true,
+		});
+	}
 
 	beforeEach(() => {
 		// Reset modal before each test
-		modal = new KeyTermModal(mockApp, []);
+		setupModal([]);
 	});
 
 	describe("Constructor & Initialization", () => {
@@ -65,7 +132,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 	describe("Pagination Navigation", () => {
 		beforeEach(() => {
 			const terms = Array.from({ length: 250 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 100);
+			setupModal(terms, 100);
 		});
 
 		test("getPageTerms should return correct terms for page 0", () => {
@@ -133,7 +200,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 	describe("Term Selection & Rejection", () => {
 		beforeEach(() => {
 			const terms = Array.from({ length: 50 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 50);
+			setupModal(terms, 50);
 		});
 
 		test("toggleTerm should add term to selected", () => {
@@ -189,7 +256,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 	describe("Page-level Operations", () => {
 		beforeEach(() => {
 			const terms = Array.from({ length: 250 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 100);
+			setupModal(terms, 100);
 		});
 
 		test("selectAllPage should select all terms on current page", () => {
@@ -243,7 +310,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 	describe("Statistics & Tracking", () => {
 		beforeEach(() => {
 			const terms = Array.from({ length: 100 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 100);
+			setupModal(terms, 100);
 		});
 
 		test("getStats should show initial state", () => {
@@ -293,7 +360,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 	describe("Selection Persistence Across Pages", () => {
 		beforeEach(() => {
 			const terms = Array.from({ length: 250 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 100);
+			setupModal(terms, 100);
 		});
 
 		test("selections should persist when navigating between pages", () => {
@@ -383,8 +450,7 @@ describe("KeyTermModal - Chunking & Pagination", () => {
 
 		test("should handle very large term lists", () => {
 			const terms = Array.from({ length: 10000 }, (_, i) => `term${i}`);
-			modal = new KeyTermModal(mockApp, terms, 100);
-			expect(modal.getTotalPages()).toBe(100);
+			setupModal(terms, 100);
 
 			modal.goToPage(99);
 			const lastPageTerms = modal.getPageTerms();

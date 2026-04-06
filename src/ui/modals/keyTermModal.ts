@@ -1,4 +1,5 @@
 import { Modal, App, Setting } from "obsidian";
+import { BlacklistManager } from "../../core/scanner/blacklistManager";
 
 export interface KeyTermSelection {
 	selected: Set<string>;
@@ -15,19 +16,22 @@ export class KeyTermModal extends Modal {
 	private termsPerPage: number = 100;
 	private onApply: (selection: KeyTermSelection) => void;
 	private onCancel: () => void;
+	private blacklistManager: BlacklistManager | null = null;
 
 	constructor(
 		app: App,
 		terms: string[],
 		termsPerPage: number = 100,
 		onApply: (selection: KeyTermSelection) => void = () => {},
-		onCancel: () => void = () => {}
+		onCancel: () => void = () => {},
+		blacklistManager: BlacklistManager | null = null
 	) {
 		super(app);
 		this.terms = terms;
 		this.termsPerPage = Math.max(50, Math.min(200, termsPerPage)); // Clamp 50-200
 		this.onApply = onApply;
 		this.onCancel = onCancel;
+		this.blacklistManager = blacklistManager;
 	}
 
 	/**
@@ -122,7 +126,7 @@ export class KeyTermModal extends Modal {
 	previousPage(): void {
 		if (this.currentPage > 0) {
 			this.currentPage--;
-			this.render();
+			this.tryRender();
 		}
 	}
 
@@ -132,7 +136,7 @@ export class KeyTermModal extends Modal {
 	nextPage(): void {
 		if (this.currentPage < this.getTotalPages() - 1) {
 			this.currentPage++;
-			this.render();
+			this.tryRender();
 		}
 	}
 
@@ -143,7 +147,7 @@ export class KeyTermModal extends Modal {
 		const totalPages = this.getTotalPages();
 		if (page >= 0 && page < totalPages) {
 			this.currentPage = page;
-			this.render();
+			this.tryRender();
 		}
 	}
 
@@ -162,7 +166,18 @@ export class KeyTermModal extends Modal {
 	/**
 	 * Render the modal UI
 	 */
+	/**
+	 * Try to render (safe version that checks if DOM is available)
+	 */
+	private tryRender(): void {
+		// Check if DOM methods are available (skip if not - e.g., in test environment)
+		if (this.contentEl && typeof this.contentEl.empty === 'function' && typeof this.contentEl.createDiv === 'function') {
+			this.render();
+		}
+	}
+
 	render(): void {
+
 		this.contentEl.empty();
 
 		// Header with title and page counter
@@ -175,12 +190,21 @@ export class KeyTermModal extends Modal {
 			text: `Page ${this.currentPage + 1} of ${totalPages} (${this.terms.length} total terms)`,
 		});
 
+		// Help text
+		const helpDiv = this.contentEl.createDiv("key-term-modal-help");
+		helpDiv.createEl("small", {
+			text: "✓ = Keep as key term  |  ✗ = Blacklist from future scans (vault-wide)",
+		});
+
 		// Stats section
 		const stats = this.getStats();
 		const statsDiv = this.contentEl.createDiv("key-term-modal-stats");
 		statsDiv.createEl("span", { text: `✓ Selected: ${stats.selected}` });
 		statsDiv.createEl("span", { text: `✗ Rejected: ${stats.rejected}` });
 		statsDiv.createEl("span", { text: `○ Remaining: ${stats.remaining}` });
+		if (this.blacklistManager) {
+			statsDiv.createEl("span", { text: `🚫 Blacklisted (all): ${this.blacklistManager.size()}` });
+		}
 
 		// Page controls (top)
 		const topControls = this.contentEl.createDiv("key-term-modal-controls");
@@ -220,8 +244,9 @@ export class KeyTermModal extends Modal {
 
 			const checkboxContainer = termRow.createDiv("key-term-checkbox-group");
 
-			// Selected checkbox (green)
-			const selectedCheckbox = checkboxContainer.createEl("input", {
+			// Selected checkbox (green) with label
+			const selectedLabel = checkboxContainer.createEl("label", { cls: "key-term-checkbox-label" });
+			const selectedCheckbox = selectedLabel.createEl("input", {
 				type: "checkbox",
 			});
 			if (this.isTermSelected(term)) {
@@ -232,12 +257,14 @@ export class KeyTermModal extends Modal {
 				this.toggleTerm(term);
 				this.render();
 			});
+			selectedLabel.createSpan({ text: "Keep", cls: "checkbox-label-text" });
 
-			// Term label
+			// Term label (center)
 			const label = termRow.createEl("label", { text: term, cls: "key-term-label" });
 
-			// Rejected checkbox (red)
-			const rejectedCheckbox = checkboxContainer.createEl("input", {
+			// Rejected checkbox (red) with label
+			const rejectedLabel = checkboxContainer.createEl("label", { cls: "key-term-checkbox-label" });
+			const rejectedCheckbox = rejectedLabel.createEl("input", {
 				type: "checkbox",
 			});
 			if (this.isTermRejected(term)) {
@@ -248,6 +275,7 @@ export class KeyTermModal extends Modal {
 				this.toggleRejected(term);
 				this.render();
 			});
+			rejectedLabel.createSpan({ text: "Blacklist", cls: "checkbox-label-text" });
 		});
 
 		// Pagination controls (bottom)
@@ -273,7 +301,12 @@ export class KeyTermModal extends Modal {
 				btn
 					.setButtonText("Apply")
 					.setCta()
-					.onClick(() => {
+					.onClick(async () => {
+						// Persist blacklisted terms
+						if (this.blacklistManager && this.selection.rejected.size > 0) {
+							const rejectedArray = Array.from(this.selection.rejected);
+							await this.blacklistManager.addToBlacklist(rejectedArray);
+						}
 						this.onApply(this.selection);
 						this.close();
 					})

@@ -5,7 +5,7 @@
  * Handles modal results, data persistence, and UI feedback.
  */
 
-import { App, Notice, Vault } from 'obsidian';
+import { App, Notice, Vault, TFile } from 'obsidian';
 import { Entity, PluginSettings, TimelineEvent } from '../../types';
 import { MetadataReviewModal, EntityGroup, MetadataReviewResult } from '../modals/metadataReviewModal';
 import { SubMetadataModal, ChildNoteConfig, SubMetadataResult } from '../modals/subMetadataModal';
@@ -14,6 +14,7 @@ import { DescriptionModal, DescriptionModalResult } from '../modals/descriptionM
 import { log } from '../../protocol/logManager';
 import { EntityStore } from '../../core/metadata/entityStore';
 import { TimelineManager } from '../../core/metadata/timelineManager';
+import { addTagsToFrontmatter } from '../../utils/frontmatterHelper';
 
 /**
  * Handle metadata review modal - organize entities into groups
@@ -82,6 +83,47 @@ ${group.entities.map(e => `| [[${e.name}]] | ${e.frequency} | ${e.sources.map(s 
 									new Notice(`✅ Created parent note: ${group.name}`);
 								}
 							}
+						}
+
+						// Step 2: Update source documents with group tags
+						try {
+							const sourceDocUpdates = new Map<string, Set<string>>();
+
+							// Build a map of source documents → tags to add
+							for (const group of result.groups) {
+								for (const entity of group.entities) {
+									for (const source of entity.sources) {
+										if (!sourceDocUpdates.has(source.document)) {
+											sourceDocUpdates.set(source.document, new Set());
+										}
+
+										// Add tag in format: GroupName/EntityName
+										const tag = `${group.name}/${entity.name}`;
+										sourceDocUpdates.get(source.document)!.add(tag);
+									}
+								}
+							}
+
+							// Update each source document's frontmatter
+							for (const [docPath, tags] of sourceDocUpdates.entries()) {
+								try {
+									const sourceFile = vault.getAbstractFileByPath(docPath);
+									if (sourceFile && sourceFile instanceof TFile) {
+										await addTagsToFrontmatter(vault, sourceFile, Array.from(tags));
+										console.log(`✅ Updated frontmatter for ${docPath} with ${tags.size} group tags`);
+									}
+								} catch (error) {
+									console.warn(`⚠️ Failed to update frontmatter for ${docPath}:`, error);
+									// Don't block on individual document updates
+								}
+							}
+
+							new Notice(
+								`✅ Updated ${sourceDocUpdates.size} source documents with group tags`
+							);
+						} catch (error) {
+							console.error('Error updating source document frontmatter:', error);
+							new Notice(`⚠️ Source document tags may not have been updated: ${error}`);
 						}
 
 						// Log the action

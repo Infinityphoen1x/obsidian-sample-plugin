@@ -49,6 +49,7 @@ describe('Phase 6: Document Scanner Handlers', () => {
 			path: 'documents/test-doc.md',
 			basename: 'test-doc.md',
 			parent: { path: 'documents' },
+			extension: 'md',
 		};
 
 		// Setup mock vault
@@ -75,7 +76,7 @@ describe('Phase 6: Document Scanner Handlers', () => {
 		};
 
 		// Mock KeyTermModal to immediately invoke onApply callback with all selected terms
-		(KeyTermModal as jest.Mock).mockImplementation((app, terms, chunkSize, onApply, onCancel) => {
+		(KeyTermModal as jest.Mock).mockImplementation((app, terms, chunkSize, onApply, onCancel, blacklistManager) => {
 			// Simulate user clicking "Apply" immediately with all terms selected
 			setTimeout(async () => {
 				try {

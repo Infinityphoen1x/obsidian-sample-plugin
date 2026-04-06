@@ -5,7 +5,7 @@
  * Allows users to see, organize, and manage timeline snapshots.
  */
 
-import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { ItemView, WorkspaceLeaf, Notice, Plugin } from "obsidian";
 import { TimelineEvent } from "../../types";
 import { TimelineRenderer } from "../components/timelineRenderer";
 
@@ -24,9 +24,11 @@ export class TimelineView extends ItemView {
 	private snapshots: TimelineSnapshot[] = [];
 	private currentSnapshotId: string | null = null;
 	private renderer: TimelineRenderer | null = null;
+	private plugin?: Plugin;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, plugin?: Plugin) {
 		super(leaf);
+		this.plugin = plugin;
 	}
 
 	getViewType(): string {
