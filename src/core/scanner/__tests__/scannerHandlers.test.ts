@@ -210,7 +210,7 @@ describe('Phase 6: Document Scanner Handlers', () => {
 
 			(wikiLinkTemporalTerms as jest.Mock).mockReturnValue(expectedWikilinked);
 
-			const result = wikiLinkTemporalTerms(content, [{ term: 'before', frequency: 1 }]);
+			const result = wikiLinkTemporalTerms(content, [{ term: 'before', position: 21, lineNumber: 1, frequency: 1, wikilinked: false }]);
 
 			expect(wikiLinkTemporalTerms).toHaveBeenCalled();
 			expect(result).toBe(expectedWikilinked);

@@ -10,8 +10,10 @@ import { Entity, PluginSettings, TimelineEvent } from '../../types';
 import { MetadataReviewModal, EntityGroup, MetadataReviewResult } from '../modals/metadataReviewModal';
 import { SubMetadataModal, ChildNoteConfig, SubMetadataResult } from '../modals/subMetadataModal';
 import { TimelineModal, TimelineModalResult } from '../modals/timelineModal';
+import { DescriptionModal, DescriptionModalResult } from '../modals/descriptionModal';
 import { log } from '../../protocol/logManager';
 import { EntityStore } from '../../core/metadata/entityStore';
+import { TimelineManager } from '../../core/metadata/timelineManager';
 
 /**
  * Handle metadata review modal - organize entities into groups
@@ -217,6 +219,7 @@ export async function handleTimeline(
 	events: TimelineEvent[],
 	sourceDocument: string,
 	settings: PluginSettings,
+	timelineManager?: TimelineManager,
 ): Promise<void> {
 	return new Promise((resolve) => {
 		const modal = new TimelineModal(
@@ -226,6 +229,17 @@ export async function handleTimeline(
 			async (result: TimelineModalResult) => {
 				if (!result.cancelled && result.snapshot) {
 					try {
+						// Save to timeline manager
+						if (timelineManager) {
+							const snapshotId = timelineManager.addSnapshot(
+								result.snapshot.name,
+								result.snapshot.documentSource,
+								result.snapshot.events
+							);
+							await timelineManager.persist();
+							console.log(`Timeline snapshot saved: ${snapshotId}`);
+						}
+
 						await log(
 							vault,
 							settings,
@@ -251,6 +265,90 @@ export async function handleTimeline(
 			},
 			() => {
 				new Notice('Timeline creation cancelled');
+				resolve();
+			}
+		);
+
+		modal.open();
+	});
+}
+
+/**
+ * Handle description modal - add or update entity descriptions
+ */
+export async function handleDescriptionModal(
+	app: App,
+	vault: Vault,
+	highlightedText: string,
+	entities: Entity[],
+	entityStore?: EntityStore,
+	settings?: PluginSettings
+): Promise<void> {
+	return new Promise((resolve) => {
+		const modal = new DescriptionModal(
+			app,
+			highlightedText,
+			entities,
+			async (result: DescriptionModalResult) => {
+				if (!result.cancelled && result.entityId) {
+					try {
+						if (entityStore) {
+							// Update entity in store
+							const entity = entityStore.getEntity(result.entityId);
+							if (entity) {
+								entity.description = result.description;
+								entityStore.updateEntity(result.entityId, { description: result.description });
+								await entityStore.persist();
+							}
+
+							// Update child note if it exists
+							const childNotePath = `entities/${result.entityName}.md`;
+							const childNoteFile = vault.getAbstractFileByPath(childNotePath);
+
+							if (childNoteFile && childNoteFile.name) {
+								const content = await vault.read(childNoteFile as any);
+								
+								// Find and replace description section
+								const descStart = content.indexOf('## Description');
+								if (descStart !== -1) {
+									const beforeDesc = content.substring(0, descStart + '## Description\n'.length);
+									const afterDesc = content.substring(descStart + '## Description\n'.length);
+									const nextSection = afterDesc.indexOf('\n##');
+									const finalContent = nextSection === -1 
+										? beforeDesc + result.description + '\n'
+										: beforeDesc + result.description + '\n' + afterDesc.substring(nextSection);
+									
+									await vault.modify(childNoteFile as any, finalContent);
+								}
+							}
+						}
+
+						if (settings) {
+							await log(
+								vault,
+								settings,
+								'description-edits',
+								`Added description to entity: ${result.entityName}`,
+								{
+									entityId: result.entityId,
+									entityName: result.entityName,
+									descriptionLength: result.description.length,
+								}
+							);
+						}
+
+						new Notice(`✅ Description added to "${result.entityName}"`);
+					} catch (error) {
+						console.error('Error handling description modal:', error);
+						new Notice(`❌ Error updating description: ${error}`);
+					}
+				} else {
+					new Notice('Description update cancelled');
+				}
+				resolve();
+			},
+			() => {
+				new Notice('Description update cancelled');
 				resolve();
 			}
 		);

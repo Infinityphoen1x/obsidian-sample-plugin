@@ -1,5 +1,15 @@
 import { Entity, PluginSettings, SourceRef } from "../../../types";
 
+// Counter for generating unique entity IDs in tests
+let entityCounter = 0;
+
+/**
+ * Reset the entity counter (useful between tests)
+ */
+export function resetEntityCounter(): void {
+	entityCounter = 0;
+}
+
 /**
  * Create a complete PluginSettings object for testing
  */
@@ -33,8 +43,9 @@ export function createSourceRef(document: string, lineNumbers: number[] = []): S
  */
 export function createEntity(overrides?: Partial<Entity>): Entity {
 	const now = Date.now();
+	entityCounter++;
 	return {
-		id: "ent_test_0001",
+		id: `ent_test_${String(entityCounter).padStart(4, "0")}`,
 		name: "Test Entity",
 		frequency: 1,
 		sources: [],

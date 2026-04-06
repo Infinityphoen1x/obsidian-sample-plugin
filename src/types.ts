@@ -134,8 +134,9 @@ export interface Token {
 
 export interface TemporalTerm {
   term: string;
-  position: number; // Character position
-  lineNumber: number;
+  position: number; // Character position of first occurrence
+  lineNumber: number; // Line of first occurrence
+  frequency: number; // Count of occurrences in document
   wikilinked: boolean; // Already [[wrapped]]
 }
 

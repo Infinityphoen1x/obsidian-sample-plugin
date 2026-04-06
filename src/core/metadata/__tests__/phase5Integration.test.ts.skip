@@ -1,0 +1,625 @@
+import { EntityStore } from "../entityStore";
+import { HubManager } from "../hubManager";
+import { GlossaryManager } from "../glossaryManager";
+import { TimelineManager } from "../timelineManager";
+import { Entity, Group, PluginSettings } from "../../../types";
+import { Vault, TFile } from "obsidian";
+
+const createMockVault = () => {
+	const fileStorage = new Map<string, string>();
+
+	const createTFile = (path: string): TFile => {
+		const file = new TFile();
+		file.path = path;
+		file.name = path.split("/").pop() || "";
+		return file;
+	};
+
+	const mockVault = {
+		getAbstractFileByPath: jest.fn((path: string) => {
+			if (fileStorage.has(path)) {
+				return createTFile(path);
+			}
+			return null;
+		}),
+		read: jest.fn(async (file: TFile) => {
+			return fileStorage.get(file.path) || "";
+		}),
+		create: jest.fn(async (path: string, content: string) => {
+			fileStorage.set(path, content);
+			return createTFile(path);
+		}),
+		modify: jest.fn(async (file: TFile, content: string) => {
+			fileStorage.set(file.path, content);
+		}),
+		getFileByPath: jest.fn((path: string) => {
+			if (fileStorage.has(path)) {
+				return createTFile(path);
+			}
+			return null;
+		}),
+		getFolderByPath: jest.fn(() => null),
+		createFolder: jest.fn(async (path: string) => {
+			return { path } as any;
+		}),
+	} as any;
+
+	return { mockVault: mockVault as Vault, fileStorage };
+};
+
+const createMockSettings = (): PluginSettings => ({
+	protocolFolderName: ".metadata",
+	masterMetadataFile: "master-entities.csv",
+	indexFile: "index.json",
+	desktopOnly: false,
+	mobileWarning: true,
+	logLevel: "info",
+	chunkSize: 100,
+	timelineMode: "interactive",
+	showDescriptions: true,
+	autoFormatFrontmatter: true,
+	enableLogging: true,
+	logRetentionDays: 30,
+});
+
+describe("Phase 5 Integration - Hub/Glossary/Timeline System", () => {
+	let mockVault: Vault;
+	let fileStorage: Map<string, string>;
+	let settings: PluginSettings;
+	let entityStore: EntityStore;
+	let hubManager: HubManager;
+	let glossaryManager: GlossaryManager;
+	let timelineManager: TimelineManager;
+
+	beforeEach(() => {
+		const { mockVault: vault, fileStorage: storage } = createMockVault();
+		mockVault = vault;
+		fileStorage = storage;
+		settings = createMockSettings();
+
+		entityStore = new EntityStore(mockVault, ".metadata", "master-entities.csv");
+		hubManager = new HubManager(mockVault, ".metadata", settings);
+		glossaryManager = new GlossaryManager(mockVault, ".metadata", settings);
+		timelineManager = new TimelineManager(mockVault, ".metadata", settings);
+	});
+
+	describe("Document Scanning Workflow", () => {
+		test("should create entities from document scan", async () => {
+			const entities: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					frequency: 45,
+					sources: [{ document: "Chapter1.md", lineNumbers: [1, 5, 10] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				{
+					id: "ent_2",
+					name: "Vincent",
+					group: "Characters",
+					frequency: 32,
+					sources: [{ document: "Chapter1.md", lineNumbers: [2, 8] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				{
+					id: "ent_3",
+					name: "Mage Tower",
+					group: "Locations",
+					frequency: 18,
+					sources: [{ document: "Chapter1.md", lineNumbers: [3, 15] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			// Store entities
+			for (const entity of entities) {
+				entityStore.addEntity(entity);
+			}
+
+			await entityStore.persist();
+
+			// Verify entities persisted
+			const newStore = new EntityStore(mockVault, ".metadata", "master-entities.csv");
+			await newStore.loadEntities();
+
+			const allEntities = newStore.getAll();
+			expect(allEntities).toHaveLength(3);
+			expect(allEntities.find((e) => e.name === "Lucy")).toBeDefined();
+		});
+	});
+
+	describe("Co-Occurrence Hub Population", () => {
+		test("should detect and track co-occurrences during scanning", async () => {
+			// Simulate document scanning with co-occurrences
+			const sentenceEntities = new Map<string, string[]>([
+				["Lucy meets Vincent", ["ent_1", "ent_2"]],
+				["They travel to Mage Tower", ["ent_1", "ent_2", "ent_3"]],
+				["At Mage Tower, they find magic", ["ent_1", "ent_2", "ent_3"]],
+				["Lucy alone studies the tower", ["ent_1", "ent_3"]],
+				["Vincent returns alone", ["ent_2"]],
+			]);
+
+			await hubManager.detectCoOccurrences(
+				sentenceEntities,
+				"Chapter1.md",
+				1
+			);
+
+			const entries = hubManager.getEntries();
+			expect(entries.length).toBeGreaterThan(0);
+
+			// Should have detected Lucy+Vincent
+			const lucyVincent = entries.find(
+				(e) =>
+					e.entities.includes("ent_1") && e.entities.includes("ent_2")
+			);
+			expect(lucyVincent).toBeDefined();
+			expect(lucyVincent?.frequency).toBeGreaterThanOrEqual(1);
+
+			// Should have detected three-way co-occurrence
+			const allThree = entries.find(
+				(e) =>
+					e.entities.includes("ent_1") &&
+					e.entities.includes("ent_2") &&
+					e.entities.includes("ent_3")
+			);
+			expect(allThree).toBeDefined();
+		});
+
+		test("should persist hub after population", async () => {
+			const sentenceEntities = new Map<string, string[]>([
+				["Lucy and Vincent", ["ent_1", "ent_2"]],
+			]);
+
+			await hubManager.detectCoOccurrences(
+				sentenceEntities,
+				"Chapter1.md",
+				1
+			);
+
+			await hubManager.persist();
+
+			const hubPath = ".metadata/hub-cross-references.csv";
+			expect(fileStorage.has(hubPath)).toBe(true);
+
+			const content = fileStorage.get(hubPath) || "";
+			expect(content).toContain("ent_1|ent_2");
+		});
+
+		test("should load hub on next plugin startup", async () => {
+			// First, populate and persist
+			const sentenceEntities = new Map<string, string[]>([
+				["Lucy and Vincent", ["ent_1", "ent_2"]],
+			]);
+
+			await hubManager.detectCoOccurrences(
+				sentenceEntities,
+				"Chapter1.md",
+				1
+			);
+
+			await hubManager.persist();
+
+			// Create new manager and load
+			const newHub = new HubManager(mockVault, ".metadata", settings);
+			await newHub.loadHub();
+
+			const entries = newHub.getEntries();
+			expect(entries.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe("Glossary Tree Building", () => {
+		test("should build glossary from entities and groups", async () => {
+			const groups: Group[] = [
+				{
+					id: "grp_1",
+					name: "Characters",
+					folder: "Characters/",
+					keyTermIds: ["ent_1", "ent_2"],
+					tags: [],
+					createdAt: Date.now(),
+				},
+				{
+					id: "grp_2",
+					name: "Locations",
+					folder: "Locations/",
+					keyTermIds: ["ent_3"],
+					tags: [],
+					createdAt: Date.now(),
+				},
+			];
+
+			const entities: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					frequency: 45,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				{
+					id: "ent_2",
+					name: "Vincent",
+					group: "Characters",
+					frequency: 32,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				{
+					id: "ent_3",
+					name: "Mage Tower",
+					group: "Locations",
+					frequency: 18,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			glossaryManager.buildFromGroupsAndEntities(groups, entities);
+
+			const tree = glossaryManager.getTree();
+			expect(tree.entries).toHaveLength(2);
+
+			const charGroup = tree.entries.find((e) => e.name === "Characters");
+			expect(charGroup?.children).toHaveLength(2);
+
+			const locGroup = tree.entries.find((e) => e.name === "Locations");
+			expect(locGroup?.children).toHaveLength(1);
+		});
+
+		test("should maintain glossary consistency after updates", async () => {
+			const groups: Group[] = [
+				{
+					id: "grp_1",
+					name: "Characters",
+					folder: "Characters/",
+					keyTermIds: ["ent_1"],
+					tags: [],
+					createdAt: Date.now(),
+				},
+			];
+
+			const entities: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					frequency: 45,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			glossaryManager.buildFromGroupsAndEntities(groups, entities);
+
+			// Add new entity
+			await glossaryManager.addOrUpdateEntry(
+				"Characters",
+				{
+					id: "ent_2",
+					name: "Vincent",
+					frequency: 32,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				"Characters/Vincent.md"
+			);
+
+			const tree = glossaryManager.getTree();
+			const charGroup = tree.entries.find((e) => e.name === "Characters");
+			expect(charGroup?.children).toHaveLength(2);
+
+			// Remove entity
+			await glossaryManager.removeEntry("Characters", "ent_1");
+
+			const updatedTree = glossaryManager.getTree();
+			const updatedCharGroup = updatedTree.entries.find(
+				(e) => e.name === "Characters"
+			);
+			expect(updatedCharGroup?.children).toHaveLength(1);
+			expect(updatedCharGroup?.children?.[0].name).toBe("Vincent");
+		});
+	});
+
+	describe("Timeline Events & Snapshots", () => {
+		test("should create timeline snapshot from co-occurrences", async () => {
+			const snapshot = timelineManager.addSnapshot(
+				"Act 1: The Meeting",
+				"Chapter 1-3",
+				[]
+			);
+
+			expect(snapshot).toBeDefined();
+
+			const allSnapshots = timelineManager.getSnapshots();
+			expect(allSnapshots).toHaveLength(1);
+			expect(allSnapshots[0].name).toBe("Act 1: The Meeting");
+		});
+
+		test("should add events to snapshot and track sources", async () => {
+			const snapshot = timelineManager.addSnapshot(
+				"Act 1",
+				"Chapter 1-3",
+				[]
+			);
+
+			// Add event
+			const newEvent: TimelineEvent = {
+				id: "evt_1",
+				text: "Lucy meets Vincent at Mage Tower",
+				source: { document: "Chapter1.md", line: 1 },
+				sentence: "Lucy meets Vincent at Mage Tower",
+				createdAt: Date.now(),
+			};
+			const currentEvents = timelineManager.getSnapshotEvents(snapshot);
+			timelineManager.updateSnapshotEvents(snapshot, [...currentEvents, newEvent]);
+
+			const snapshotWithEvents =
+				timelineManager.getSnapshotWithEvents(snapshot);
+			expect(snapshotWithEvents?.events).toHaveLength(1);
+		});
+
+		test("should persist timeline and restore on reload", async () => {
+			// Create snapshot and events
+			const snapshot = timelineManager.addSnapshot(
+				"Act 1",
+				"Chapter 1-3",
+				[]
+			);
+
+			// Add event using updateSnapshotEvents
+			const newEvent: TimelineEvent = {
+				id: "evt_1",
+				text: "Event 1",
+				source: { document: "Chapter1.md", line: 1 },
+				sentence: "Event 1",
+				createdAt: Date.now(),
+			};
+			const currentEvents = timelineManager.getSnapshotEvents(snapshot);
+			timelineManager.updateSnapshotEvents(snapshot, [...currentEvents, newEvent]);
+
+			await timelineManager.persist();
+
+			// Create new timeline manager and load
+			const newTimeline = new TimelineManager(mockVault, ".metadata", settings);
+			await newTimeline.loadTimeline();
+
+			const snapshots = newTimeline.getSnapshots();
+			expect(snapshots).toHaveLength(1);
+			expect(snapshots[0].name).toBe("Act 1");
+		});
+	});
+
+	describe("Full Workflow Integration", () => {
+		test("should complete end-to-end metadata organization workflow", async () => {
+			// Step 1: Create entities from scanning
+			const entities: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					frequency: 45,
+					sources: [{ document: "Chapter1.md", lineNumbers: [1, 5] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+				{
+					id: "ent_2",
+					name: "Vincent",
+					group: "Characters",
+					frequency: 32,
+					sources: [{ document: "Chapter1.md", lineNumbers: [2, 8] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			for (const entity of entities) {
+				entityStore.addEntity(entity);
+			}
+			await entityStore.persist();
+
+			// Step 2: Detect co-occurrences
+			const sentenceEntities = new Map<string, string[]>([
+				["Lucy and Vincent meet", ["ent_1", "ent_2"]],
+			]);
+
+			await hubManager.detectCoOccurrences(
+				sentenceEntities,
+				"Chapter1.md",
+				1
+			);
+			await hubManager.persist();
+
+			// Step 3: Build glossary
+			const groups: Group[] = [
+				{
+					id: "grp_1",
+					name: "Characters",
+					folder: "Characters/",
+					keyTermIds: ["ent_1", "ent_2"],
+					tags: [],
+					createdAt: Date.now(),
+				},
+			];
+
+			glossaryManager.buildFromGroupsAndEntities(groups, entities);
+			await glossaryManager.persist();
+
+			// Step 4: Create timeline
+			const snapshot = timelineManager.addSnapshot(
+				"Meeting",
+				"Chapter 1",
+				[]
+			);
+			const newEvent: TimelineEvent = {
+				id: "evt_1",
+				text: "Lucy and Vincent meet",
+				source: { document: "Chapter1.md", line: 1 },
+				sentence: "Lucy and Vincent meet",
+				createdAt: Date.now(),
+			};
+			const currentEvents = timelineManager.getSnapshotEvents(snapshot);
+			timelineManager.updateSnapshotEvents(snapshot, [...currentEvents, newEvent]);
+			await timelineManager.persist();
+
+			// Verify all systems populated
+			expect(entityStore.getAllEntities()).toHaveLength(2);
+			expect(hubManager.getEntries()).toHaveLength(1);
+			expect(glossaryManager.getTree().entries).toHaveLength(1);
+			expect(timelineManager.getSnapshots()).toHaveLength(1);
+
+			// Verify all files persisted
+			expect(fileStorage.has(".metadata/master-entities.csv")).toBe(true);
+			expect(
+				fileStorage.has(".metadata/hub-cross-references.csv")
+			).toBe(true);
+			expect(fileStorage.has(".metadata/glossary.json")).toBe(true);
+			expect(
+				fileStorage.has(".metadata/master-timeline.csv")
+			).toBe(true);
+		});
+
+		test("should maintain data integrity across multiple scans", async () => {
+			// First scan
+			const entities1: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					frequency: 10,
+					sources: [{ document: "Chapter1.md", lineNumbers: [1] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			for (const entity of entities1) {
+				entityStore.addEntity(entity);
+			}
+
+			let allEntities = entityStore.getAllEntities();
+			expect(allEntities).toHaveLength(1);
+
+			// Second scan (incremental - adds more entities)
+			const entities2: Entity[] = [
+				{
+					id: "ent_2",
+					name: "Vincent",
+					group: "Characters",
+					frequency: 8,
+					sources: [{ document: "Chapter2.md", lineNumbers: [1] }],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			for (const entity of entities2) {
+				entityStore.addEntity(entity);
+			}
+
+			allEntities = entityStore.getAll();
+			expect(allEntities).toHaveLength(2);
+
+			// Third scan (update existing, not replace)
+			const lucyUpdated: Entity = {
+				...entities1[0],
+				frequency: 15, // Increased frequency
+				sources: [
+					{ document: "Chapter1.md", lineNumbers: [1, 5] },
+					{ document: "Chapter2.md", lineNumbers: [2] },
+				],
+				updatedAt: Date.now(),
+			};
+
+			entityStore.updateEntity(lucyUpdated.id, lucyUpdated);
+
+			allEntities = entityStore.getAllEntities();
+			expect(allEntities).toHaveLength(2); // Still 2, not 3
+			const lucy = allEntities.find(e => e.id === "ent_1");
+			expect(lucy?.frequency).toBe(15);
+		});
+	});
+
+	describe("Cross-Component Queries", () => {
+		test("should find all entities mentioned with a specific entity", async () => {
+			// Create co-occurrences
+			const sentenceEntities = new Map<string, string[]>([
+				["Lucy and Vincent", ["ent_1", "ent_2"]],
+				["Lucy and Mage", ["ent_1", "ent_3"]],
+				["Vincent alone", ["ent_2"]],
+			]);
+
+			await hubManager.detectCoOccurrences(
+				sentenceEntities,
+				"Chapter1.md",
+				1
+			);
+
+			// Find all co-occurrences with Lucy
+			const lucyEntries = hubManager.getEntriesForEntity("ent_1");
+			expect(lucyEntries.length).toBeGreaterThanOrEqual(2);
+
+			lucyEntries.forEach((entry) => {
+				expect(entry.entities).toContain("ent_1");
+			});
+		});
+
+		test("should export glossary in human-readable format", async () => {
+			const groups: Group[] = [
+				{
+					id: "grp_1",
+					name: "Characters",
+					folder: "Characters/",
+					keyTermIds: ["ent_1"],
+					tags: [],
+					createdAt: Date.now(),
+				},
+			];
+
+			const entities: Entity[] = [
+				{
+					id: "ent_1",
+					name: "Lucy",
+					group: "Characters",
+					description: "The protagonist",
+					frequency: 45,
+					sources: [],
+					tags: [],
+					createdAt: Date.now(),
+					updatedAt: Date.now(),
+				},
+			];
+
+			glossaryManager.buildFromGroupsAndEntities(groups, entities);
+
+			const text = glossaryManager.exportAsText();
+			expect(text).toContain("Characters");
+			expect(text).toContain("Lucy");
+			expect(text).toContain("The protagonist");
+		});
+	});
+});

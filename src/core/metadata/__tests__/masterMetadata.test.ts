@@ -9,20 +9,39 @@ import {
 	createEntityWithTags,
 	createEntityWithGroup,
 	createEntityWithDescription,
+	resetEntityCounter,
 } from "./testHelpers";
 
 // Mock Obsidian components
-const mockVault = {} as Vault;
+const mockVault = {
+	getFileByPath: jest.fn().mockReturnValue(null),
+	read: jest.fn().mockResolvedValue(""),
+	create: jest.fn().mockResolvedValue(undefined),
+	modify: jest.fn().mockResolvedValue(undefined),
+} as any as Vault;
 const mockSettings = createMockSettings();
 
 describe("MasterMetadata - Entity Merge & Persistence", () => {
 	let masterMetadata: MasterMetadata;
+	let trackedEntities: Map<string, Entity>;
 
 	beforeEach(() => {
+		resetEntityCounter();
+		trackedEntities = new Map();
 		masterMetadata = new MasterMetadata(mockVault, mockSettings);
 		// Mock the entityStore's methods
 		(masterMetadata as any).entityStore.loadEntities = jest.fn().mockResolvedValue(undefined);
 		(masterMetadata as any).entityStore.persist = jest.fn().mockResolvedValue(undefined);
+		
+		// Mock addEntity to track entities
+		(masterMetadata as any).entityStore.addEntity = jest.fn((entity: Entity) => {
+			trackedEntities.set(entity.id, entity);
+		});
+		
+		// Mock getAllEntities to return tracked entities
+		(masterMetadata as any).entityStore.getAllEntities = jest.fn(() => {
+			return Array.from(trackedEntities.values());
+		});
 	});
 
 	describe("Initialization", () => {
@@ -46,9 +65,7 @@ describe("MasterMetadata - Entity Merge & Persistence", () => {
 
 	describe("Single Entity Addition", () => {
 		beforeEach(() => {
-			(masterMetadata as any).entityStore.getAllEntities = jest.fn().mockReturnValue([]);
-			(masterMetadata as any).entityStore.addEntity = jest.fn();
-			(masterMetadata as any).entityStore.findByName = jest.fn().mockReturnValue(null);
+			trackedEntities.clear();
 		});
 
 		test("should add new entity and return true", () => {
@@ -90,8 +107,7 @@ describe("MasterMetadata - Entity Merge & Persistence", () => {
 
 	describe("Batch Entity Addition with Merge Logic", () => {
 		beforeEach(() => {
-			(masterMetadata as any).entityStore.getAllEntities = jest.fn().mockReturnValue([]);
-			(masterMetadata as any).entityStore.addEntity = jest.fn();
+			trackedEntities.clear();
 		});
 
 		test("should add multiple new entities", () => {

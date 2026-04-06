@@ -406,7 +406,7 @@ describe("IndexFile - Integration", () => {
 	test("should build, save, and load index correctly", async () => {
 		const entities = [
 			createEntity({ id: "ent_1", name: "Lucy" }),
-			createEntityWithGroup("Naruto", "characters"),
+			createEntity({ id: "ent_2", name: "Naruto", group: "characters" }),
 		];
 
 		// Build

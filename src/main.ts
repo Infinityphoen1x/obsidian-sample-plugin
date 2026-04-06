@@ -5,9 +5,14 @@ import { initializeProtocolFolder } from "./protocol/protocolManager";
 import { log } from "./protocol/logManager";
 import { handleDocumentScan } from "./core/scanner/scannerHandlers";
 import { EntityStore, getOrCreateEntity } from "./core/metadata/entityStore";
+import { TimelineManager } from "./core/metadata/timelineManager";
+import { HubManager } from "./core/metadata/hubManager";
+import { GlossaryManager } from "./core/metadata/glossaryManager";
 import { buildIndex, saveIndex } from "./core/metadata/indexFile";
-import { handleMetadataReview, handleSubMetadata, handleTimeline } from "./ui/handlers/modalHandlers";
+import { handleMetadataReview, handleSubMetadata, handleTimeline, handleDescriptionModal } from "./ui/handlers/modalHandlers";
 import { TimelineEvent } from "./types";
+import { TimelineView } from "./ui/views/timelineView";
+import { MainPanelView } from "./ui/views/mainPanelView";
 
 /**
  * Metadata Organizer Plugin
@@ -22,6 +27,9 @@ import { TimelineEvent } from "./types";
 export default class MetadataOrganizerPlugin extends Plugin {
 	settings: PluginSettings;
 	entityStore: EntityStore | null = null;
+	timelineManager: TimelineManager | null = null;
+	hubManager: HubManager | null = null;
+	glossaryManager: GlossaryManager | null = null;
 
 	async onload() {
 		console.log("Loading Metadata Organizer Plugin...");
@@ -32,6 +40,16 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		// Register settings tab
 		this.addSettingTab(new MetadataOrganizerSettingTab(this.app, this));
 
+		// Register views
+		this.registerView(
+			TimelineView.VIEW_TYPE,
+			(leaf) => new TimelineView(leaf)
+		);
+		this.registerView(
+			MainPanelView.VIEW_TYPE,
+			(leaf) => new MainPanelView(leaf)
+		);
+
 		// Show mobile warning if applicable
 		if (Platform.isMobile && this.settings.mobileWarning) {
 			new Notice(
@@ -40,6 +58,12 @@ export default class MetadataOrganizerPlugin extends Plugin {
 				"See Settings for alternatives.",
 				5000
 			);
+			
+			// Auto-downgrade timeline mode to static on mobile
+			if (this.settings.timelineMode === "interactive") {
+				this.settings.timelineMode = "static";
+				await this.saveSettings();
+			}
 		}
 
 		// Initialize protocol folder
@@ -63,8 +87,38 @@ export default class MetadataOrganizerPlugin extends Plugin {
 			console.error("Failed to initialize entity store:", error);
 		}
 
+		// Initialize timeline manager
+		try {
+			this.timelineManager = new TimelineManager(this.app.vault, this.settings.protocolFolderName);
+			await this.timelineManager.loadTimeline();
+			console.log("Timeline manager initialized with cached snapshots");
+		} catch (error) {
+			console.error("Failed to initialize timeline manager:", error);
+		}
+
+		// Initialize hub manager
+		try {
+			this.hubManager = new HubManager(this.app.vault, this.settings.protocolFolderName, this.settings);
+			await this.hubManager.loadHub();
+			console.log("Hub manager initialized with cached cross-references");
+		} catch (error) {
+			console.error("Failed to initialize hub manager:", error);
+		}
+
+		// Initialize glossary manager
+		try {
+			this.glossaryManager = new GlossaryManager(this.app.vault, this.settings.protocolFolderName, this.settings);
+			await this.glossaryManager.loadGlossary();
+			console.log("Glossary manager initialized");
+		} catch (error) {
+			console.error("Failed to initialize glossary manager:", error);
+		}
+
 		// Register commands
 		this.registerCommands();
+
+		// Register context menu for description editing
+		this.registerDescriptionContextMenu();
 
 		console.log("Metadata Organizer Plugin loaded successfully");
 	}
@@ -232,8 +286,54 @@ export default class MetadataOrganizerPlugin extends Plugin {
 			this.app.vault,
 			mockEvents,
 			file.path,
-			this.settings
+			this.settings,
+			this.timelineManager || undefined
+		);
+	}
+
+	private registerDescriptionContextMenu(): void {
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", (menu, editor) => {
+				// Get selected text
+				const selectedText = editor.getSelection().trim();
+
+				if (selectedText.length === 0) {
+					return; // No text selected
+				}
+
+				if (!this.entityStore) {
+					return; // Entity store not ready
+				}
+
+				// Get all entities - in production could filter based on selected text
+				const entities = this.entityStore.getAllEntities();
+
+				if (entities.length === 0) {
+					return; // No entities to edit
+				}
+
+				// Add context menu item
+				menu.addItem((item) => {
+					item
+						.setTitle("Edit description (Metadata Organizer)")
+						.setIcon("pencil")
+						.onClick(async () => {
+							if (!this.entityStore) {
+								new Notice("❌ Entity store not initialized");
+								return;
+							}
+
+							await handleDescriptionModal(
+								this.app,
+								this.app.vault,
+								selectedText,
+								entities,
+								this.entityStore,
+								this.settings
+							);
+						});
+				});
+			})
 		);
 	}
 }
-

@@ -32,6 +32,8 @@ export async function initializeProtocolFolder(
 			"sub-metadata-review",
 			"description-edits",
 			"timeline-edits",
+			"hub-updates",
+			"glossary-updates",
 		];
 
 		for (const subfolder of logSubfolders) {
@@ -78,7 +80,7 @@ export function getProtocolFolderPath(settings: PluginSettings): string {
  */
 export function getLogPath(
 	settings: PluginSettings,
-	category: "document-scanning" | "metadata-review" | "sub-metadata-review" | "description-edits" | "timeline-edits"
+	category: "document-scanning" | "metadata-review" | "sub-metadata-review" | "description-edits" | "timeline-edits" | "hub-updates" | "glossary-updates"
 ): string {
 	return `${settings.protocolFolderName}/logs/${category}`;
 }

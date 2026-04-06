@@ -130,8 +130,8 @@ export class MasterMetadata {
 	 * @param incoming The incoming entity to merge
 	 */
 	private mergeEntities(master: Entity, incoming: Entity): void {
-		// Update frequency count
-		master.frequency = master.frequency + incoming.frequency;
+		// Update frequency count (default to 1 if missing)
+		master.frequency = (master.frequency ?? 1) + (incoming.frequency ?? 1);
 
 		// Merge sources
 		if (incoming.sources && incoming.sources.length > 0) {

@@ -7,6 +7,7 @@ import {
 	createSourceRef,
 	createEntityWithSources,
 	createEntityWithTags,
+	resetEntityCounter,
 } from "./testHelpers";
 
 // Mock Obsidian vault
@@ -25,6 +26,7 @@ describe("EntityStore - Core Functionality", () => {
 	let mockVault: Vault;
 
 	beforeEach(() => {
+		resetEntityCounter();
 		mockVault = createMockVault();
 		store = new EntityStore(mockVault, ".metadata", "master.csv");
 	});

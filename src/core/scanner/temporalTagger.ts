@@ -27,6 +27,29 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 	const lines = text.split("\n");
 	let lineNumber = 0;
 
+	// First pass: count frequency of each term
+	const termFrequency = new Map<string, number>();
+	for (const line of lines) {
+		const lineLower = line.toLowerCase();
+		for (const [category, keywords] of Object.entries(TEMPORAL_KEYWORDS)) {
+			for (const keyword of keywords) {
+				const regex = new RegExp(`\\b${keyword}\\b`, "gi");
+				let match;
+				while ((match = regex.exec(lineLower)) !== null) {
+					const isWikilinked =
+						match.index > 0 && text[match.index - 1] === "[" &&
+						text[match.index + keyword.length] === "]";
+					if (!isWikilinked) {
+						const keyLower = keyword.toLowerCase();
+						termFrequency.set(keyLower, (termFrequency.get(keyLower) ?? 0) + 1);
+					}
+				}
+			}
+		}
+	}
+
+	// Second pass: create entries with frequency
+	lineNumber = 0;
 	for (const line of lines) {
 		lineNumber++;
 		const lineLower = line.toLowerCase();
@@ -43,10 +66,12 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 						text[match.index + keyword.length] === "]";
 
 					if (!isWikilinked) {
+						const keyLower = keyword.toLowerCase();
 						terms.push({
-							term: keyword,
+							term: keyLower,
 							position: match.index,
 							lineNumber,
+							frequency: termFrequency.get(keyLower) ?? 0,
 							wikilinked: false,
 						});
 					}

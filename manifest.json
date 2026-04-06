@@ -3,9 +3,9 @@
 	"name": "Metadata Organizer",
 	"version": "0.1.0",
 	"minAppVersion": "0.15.0",
-	"description": "Visual metadata organizer for narrative projects. Scan documents, extract entities, create groups, and manage timelines with an interactive UI. Desktop-only with advanced organization features.",
+	"description": "Visual metadata organizer for narrative projects. Scan documents, extract entities, create groups, and manage timelines with an interactive UI. Full support for desktop and mobile with graceful degradation.",
 	"author": "Metadata Organizer Contributors",
 	"authorUrl": "https://github.com/obsidianmd/obsidian-sample-plugin",
 	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": true
+	"isDesktopOnly": false
 }
