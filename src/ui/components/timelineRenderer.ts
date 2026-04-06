@@ -183,7 +183,7 @@ export class TimelineRenderer {
 		eventEl.style.minWidth = "200px";
 		eventEl.style.marginRight = "16px";
 		eventEl.style.position = "relative";
-		(eventEl.style as unknown).flexShrink = 0;
+		(eventEl.style as CSSStyleDeclaration).flexShrink = '0';
 
 		// Timeline dot
 		const dot = eventEl.createDiv({ cls: "timeline-dot" });

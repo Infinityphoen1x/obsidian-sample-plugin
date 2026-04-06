@@ -26,7 +26,7 @@ export async function initializeProtocolFolder(
 				folder = await vault.createFolder(folderName);
 			} catch (error: unknown) {
 				// Ignore "folder already exists" error - it's idempotent
-				if (!error?.message?.includes("already exists")) {
+				if (!(error instanceof Error && error.message?.includes("already exists"))) {
 					throw error;
 				}
 				folder = vault.getFolderByPath(folderName);
@@ -40,7 +40,7 @@ export async function initializeProtocolFolder(
 			try {
 				logsFolder = await vault.createFolder(logsPath);
 			} catch (error: unknown) {
-				if (!error?.message?.includes("already exists")) {
+				if (!(error instanceof Error && error.message?.includes("already exists"))) {
 					throw error;
 				}
 				logsFolder = vault.getFolderByPath(logsPath);
@@ -66,7 +66,7 @@ export async function initializeProtocolFolder(
 					await vault.createFolder(subPath);
 				} catch (error: unknown) {
 					// Ignore "folder already exists" error - it's idempotent
-					if (!error?.message?.includes("already exists")) {
+					if (!(error instanceof Error && error.message?.includes("already exists"))) {
 						throw error;
 					}
 				}

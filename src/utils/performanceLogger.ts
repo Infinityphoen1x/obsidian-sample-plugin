@@ -1,4 +1,4 @@
-import { Vault } from "obsidian";
+import { Vault, TFile } from "obsidian";
 
 /**
  * Performance metric record
@@ -249,7 +249,7 @@ export class PerformanceLogger {
 
 			const existingFile = this.vault.getAbstractFileByPath(this.metricsFilePath);
 			if (existingFile && existingFile.name.endsWith(".json")) {
-				await this.vault.modify(existingFile as unknown, metricsJSON);
+				await this.vault.modify(existingFile as TFile, metricsJSON);
 			} else {
 				await this.vault.create(this.metricsFilePath, metricsJSON);
 			}

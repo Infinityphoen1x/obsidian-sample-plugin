@@ -5,7 +5,7 @@
  * Supports multiple log categories: scanning, reviews, edits, timeline, hub, glossary.
  */
 
-import { Vault } from "obsidian";
+import { Vault, TFile } from "obsidian";
 import { PluginSettings } from "../types";
 import { getLogPath } from "./protocolManager";
 
@@ -67,10 +67,10 @@ export async function log(
 
 		// Read existing log or create new
 		const file = vault.getAbstractFileByPath(logFile);
-		if (file && file.name) {
-			const existing = await vault.read(file as unknown);
+		if (file && file instanceof TFile) {
+			const existing = await vault.read(file);
 			content = existing + `\n${entry}${dataStr}\n`;
-			await vault.modify(file as unknown, content);
+			await vault.modify(file, content);
 			console.debug(`[Log] Appended to log file: ${logFile}`);
 		} else {
 			content = content + `\n${entry}${dataStr}`;

@@ -6,7 +6,7 @@
  */
 
 import { App, Notice, TFile, Vault } from 'obsidian';
-import { PluginSettings } from '../../types';
+import { PluginSettings, DocScanResult } from '../../types';
 import { scanMarkdown, generateFrontmatter, prependFrontmatter } from '../scanner/documentScanner';
 import { wikiLinkTemporalTerms } from '../scanner/temporalTagger';
 import { convertDocxToMarkdown } from '../scanner/docxConverter';
@@ -227,7 +227,7 @@ async function processKeyTermSelection(
 	vault: Vault,
 	file: TFile,
 	content: string,
-	scanResult: unknown,
+	scanResult: DocScanResult,
 	selectedKeyTerms: Set<string>,
 	settings: PluginSettings,
 	entityStore?: EntityStore
@@ -279,10 +279,10 @@ async function processKeyTermSelection(
 					entity.sources = [{
 						document: file.path,
 						lineNumbers: scanResult.tokens
-							.find((t: unknown) => t.word === keyTerm)
-							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
-					}];
-					entity.tags = [...(scanResult.isChapter ? ['chapter'] : ['document']), ...scanResult.temporalTerms.map((t: unknown) => `temporal:${t.term}`)];
+						.find((t) => t.word === keyTerm)
+						?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
+				}];
+				entity.tags = [...(scanResult.isChapter ? ['chapter'] : ['document']), ...scanResult.temporalTerms.map((t) => `temporal:${t.term}`)];
 					entityStore.updateEntity(entity.id, entity);
 					newCount++;
 				} else {
@@ -290,7 +290,7 @@ async function processKeyTermSelection(
 					existing.sources.push({
 						document: file.path,
 						lineNumbers: scanResult.tokens
-							.find((t: unknown) => t.word === keyTerm)
+						.find((t) => t.word === keyTerm)
 							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
 					});
 					entityStore.updateEntity(existing.id, existing);

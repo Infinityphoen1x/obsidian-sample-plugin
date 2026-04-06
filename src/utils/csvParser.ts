@@ -28,7 +28,7 @@ export function parseCSV(csvContent: string): Entity[] {
 			row[header] = values[idx] || "";
 		});
 
-		entities.push(parseEntity(row));
+		entities.push(parseEntity(row as Record<string, string>));
 	}
 
 	return entities;

@@ -34,24 +34,24 @@ export function parseFrontmatter(markdown: string): {
 		if (colonIndex === -1) continue;
 
 		const key = line.substring(0, colonIndex).trim();
-		let value = line.substring(colonIndex + 1).trim();
+		let value: string | number | boolean | Record<string, unknown> | unknown = line.substring(colonIndex + 1).trim();
 
 		// Parse JSON values
-		if (value.startsWith("[") || value.startsWith("{")) {
+		if (typeof value === 'string' && (value.startsWith("[") || value.startsWith("{"))) {
 			try {
 				value = JSON.parse(value);
 			} catch (e) {
 				// Keep as string if not valid JSON
 			}
 		} else if (value === "true") {
-			value = true as unknown;
+			value = true;
 		} else if (value === "false") {
-			value = false as unknown;
-		} else if (!isNaN(Number(value)) && value !== "") {
-			value = Number(value) as unknown;
+			value = false;
+		} else if (typeof value === 'string' && !isNaN(Number(value)) && value !== "") {
+			value = Number(value);
 		}
 
-		frontmatter[key] = value;
+		frontmatter[key] = value as (string | number | boolean | string[] | Record<string, unknown>);
 	}
 
 	return { frontmatter, content };
