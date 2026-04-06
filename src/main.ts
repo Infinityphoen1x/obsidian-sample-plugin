@@ -40,15 +40,28 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		// Register settings tab
 		this.addSettingTab(new MetadataOrganizerSettingTab(this.app, this));
 
-		// Register views
-		this.registerView(
-			TimelineView.VIEW_TYPE,
-			(leaf) => new TimelineView(leaf)
-		);
-		this.registerView(
-			MainPanelView.VIEW_TYPE,
-			(leaf) => new MainPanelView(leaf)
-		);
+		// Register views with error handling for reloads
+		try {
+			this.registerView(
+				TimelineView.VIEW_TYPE,
+				(leaf) => new TimelineView(leaf)
+			);
+		} catch (error: any) {
+			if (!error?.message?.includes("already")) {
+				console.error("Error registering timeline view:", error);
+			}
+		}
+
+		try {
+			this.registerView(
+				MainPanelView.VIEW_TYPE,
+				(leaf) => new MainPanelView(leaf)
+			);
+		} catch (error: any) {
+			if (!error?.message?.includes("already")) {
+				console.error("Error registering main panel view:", error);
+			}
+		}
 
 		// Show mobile warning if applicable
 		if (Platform.isMobile && this.settings.mobileWarning) {
@@ -70,8 +83,8 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		try {
 			await initializeProtocolFolder(this.app.vault, this.settings);
 		} catch (error) {
-			console.error("Failed to initialize protocol folder:", error);
-			new Notice("❌ Failed to initialize protocol folder. Check console.");
+			console.warn("Warning initializing protocol folder:", error);
+			// Don't block plugin initialization on protocol folder errors
 		}
 
 		// Initialize entity store
@@ -125,7 +138,11 @@ export default class MetadataOrganizerPlugin extends Plugin {
 
 	onunload() {
 		console.log("Unloading Metadata Organizer Plugin");
-		// Cleanup: unregister listeners, save state
+		// Clear all manager references
+		this.entityStore = null;
+		this.timelineManager = null;
+		this.hubManager = null;
+		this.glossaryManager = null;
 	}
 
 	private registerCommands(): void {

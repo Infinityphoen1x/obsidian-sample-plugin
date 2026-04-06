@@ -22,7 +22,29 @@ export async function initializeProtocolFolder(
 		// Create main protocol folder
 		let folder = vault.getFolderByPath(folderName);
 		if (!folder) {
-			folder = await vault.createFolder(folderName);
+			try {
+				folder = await vault.createFolder(folderName);
+			} catch (error: any) {
+				// Ignore "folder already exists" error - it's idempotent
+				if (!error?.message?.includes("already exists")) {
+					throw error;
+				}
+				folder = vault.getFolderByPath(folderName);
+			}
+		}
+
+		// Ensure logs folder exists
+		const logsPath = `${folderName}/logs`;
+		let logsFolder = vault.getFolderByPath(logsPath);
+		if (!logsFolder) {
+			try {
+				logsFolder = await vault.createFolder(logsPath);
+			} catch (error: any) {
+				if (!error?.message?.includes("already exists")) {
+					throw error;
+				}
+				logsFolder = vault.getFolderByPath(logsPath);
+			}
 		}
 
 		// Create log subfolders
@@ -40,7 +62,14 @@ export async function initializeProtocolFolder(
 			const subPath = `${folderName}/logs/${subfolder}`;
 			const existing = vault.getFolderByPath(subPath);
 			if (!existing) {
-				await vault.createFolder(subPath);
+				try {
+					await vault.createFolder(subPath);
+				} catch (error: any) {
+					// Ignore "folder already exists" error - it's idempotent
+					if (!error?.message?.includes("already exists")) {
+						throw error;
+					}
+				}
 			}
 		}
 
