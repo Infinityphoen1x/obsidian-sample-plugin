@@ -54,54 +54,55 @@ for file in "${REQUIRED_FILES[@]}"; do
 done
 echo ""
 
-# Step 6: Installation instructions
-echo "📋 Installation Instructions:"
-echo "============================"
-echo ""
-echo "To install the plugin in Obsidian:"
-echo ""
-echo "OPTION 1: Manual Installation (Recommended for Development)"
-echo "---"
-echo "1. Open Obsidian and go to Settings → About → Vault folder location"
-echo "2. Copy the following command to install to your test vault:"
-echo ""
-echo "   VAULT_PATH=\"/path/to/your/vault\""
-echo "   cp \"$PROJECT_ROOT/main.js\" \"\$VAULT_PATH/.obsidian/plugins/$PLUGIN_ID/\""
-echo "   cp \"$PROJECT_ROOT/manifest.json\" \"\$VAULT_PATH/.obsidian/plugins/$PLUGIN_ID/\""
-echo "   cp \"$PROJECT_ROOT/styles.css\" \"\$VAULT_PATH/.obsidian/plugins/$PLUGIN_ID/\" 2>/dev/null || true"
-echo ""
-echo "3. Reload Obsidian (Ctrl+R or Cmd+R) or restart the app"
-echo "4. Enable the plugin in Settings → Community plugins"
+# Step 6: Determine vault path
+echo "📋 Plugin Installation"
+echo "====================="
 echo ""
 
-echo "OPTION 2: Create Test Vault Directory Structure"
-echo "---"
-echo "If you have a test vault location, set the OBSIDIAN_VAULT environment variable:"
-echo ""
-echo "   export OBSIDIAN_VAULT=\"/path/to/test/vault\""
-echo "   bash $SCRIPT_DIR/install-plugin.sh"
-echo ""
+VAULT_PATH="${OBSIDIAN_VAULT}"
 
-# Step 7: If OBSIDIAN_VAULT is set, perform installation
-if [ -n "$OBSIDIAN_VAULT" ]; then
-    echo "🔗 Installing to vault: $OBSIDIAN_VAULT"
-    PLUGIN_DIR="$OBSIDIAN_VAULT/.obsidian/plugins/$PLUGIN_ID"
+# If OBSIDIAN_VAULT not set, ask user for vault path
+if [ -z "$VAULT_PATH" ]; then
+    echo "Enter your Obsidian vault path (or press Enter to skip installation):"
+    read -r VAULT_PATH
+fi
+
+# Step 7: If vault path provided, perform installation
+if [ -n "$VAULT_PATH" ]; then
+    echo ""
+    echo "🔗 Installing plugin to vault..."
+    PLUGIN_DIR="$VAULT_PATH/.obsidian/plugins/$PLUGIN_ID"
     
+    # Create plugin directory if it doesn't exist
     if [ ! -d "$PLUGIN_DIR" ]; then
-        mkdir -p "$PLUGIN_DIR"
+        mkdir -p "$PLUGIN_DIR" || { echo "❌ Failed to create plugin directory. Check path: $VAULT_PATH"; exit 1; }
         echo "✓ Created plugin directory"
     fi
     
-    cp "$PROJECT_ROOT/main.js" "$PLUGIN_DIR/"
-    cp "$PROJECT_ROOT/manifest.json" "$PLUGIN_DIR/"
+    # Copy build artifacts
+    cp "$PROJECT_ROOT/main.js" "$PLUGIN_DIR/" || { echo "❌ Failed to copy main.js"; exit 1; }
+    cp "$PROJECT_ROOT/manifest.json" "$PLUGIN_DIR/" || { echo "❌ Failed to copy manifest.json"; exit 1; }
     cp "$PROJECT_ROOT/styles.css" "$PLUGIN_DIR/" 2>/dev/null || true
     
     echo "✓ Plugin installed to: $PLUGIN_DIR"
     echo ""
-    echo "Next steps:"
+    echo "✨ Next steps:"
     echo "  1. Reload Obsidian (Ctrl+R / Cmd+R)"
     echo "  2. Go to Settings → Community plugins"
     echo "  3. Find '$PLUGIN_ID' and enable it"
+else
+    echo ""
+    echo "ℹ️  Installation skipped. To install later:"
+    echo ""
+    echo "  export OBSIDIAN_VAULT=\"/path/to/your/vault\""
+    echo "  bash $SCRIPT_DIR/install-plugin.sh"
+    echo ""
+    echo "Or manually copy these files to:"
+    echo "  YOUR_VAULT/.obsidian/plugins/$PLUGIN_ID/"
+    echo ""
+    echo "  • main.js"
+    echo "  • manifest.json"
+    echo "  • styles.css"
 fi
 
 echo ""
