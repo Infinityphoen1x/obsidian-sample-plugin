@@ -146,10 +146,14 @@ export class MainPanelView extends ItemView {
 			btn.style.backgroundColor = "#457B9D";
 		});
 
-		btn.addEventListener("click", () => {
-			// Note: executeCommandById is part of the internal Obsidian API
-			// For this view, we'll emit a custom event or trigger indirectly
-			new Notice(`🔗 Command: ${command}`);
+		btn.addEventListener("click", async () => {
+			try {
+				// Execute the command using Obsidian's command system
+				await (this.app as any).commands.executeCommandById(command);
+			} catch (error) {
+				console.error(`Error executing command ${command}:`, error);
+				new Notice(`❌ Failed to execute: ${command}`);
+			}
 		});
 
 		if (description) {

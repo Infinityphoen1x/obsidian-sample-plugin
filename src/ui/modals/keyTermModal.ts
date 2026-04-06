@@ -202,8 +202,13 @@ export class KeyTermModal extends Modal {
 		statsDiv.createEl("span", { text: `✓ Selected: ${stats.selected}` });
 		statsDiv.createEl("span", { text: `✗ Rejected: ${stats.rejected}` });
 		statsDiv.createEl("span", { text: `○ Remaining: ${stats.remaining}` });
-		if (this.blacklistManager) {
-			statsDiv.createEl("span", { text: `🚫 Blacklisted (all): ${this.blacklistManager.size()}` });
+		if (this.blacklistManager && typeof this.blacklistManager.size === 'function') {
+			try {
+				const blacklistSize = this.blacklistManager.size();
+				statsDiv.createEl("span", { text: `🚫 Blacklisted (all): ${blacklistSize}` });
+			} catch (error) {
+				console.warn("Failed to get blacklist size:", error);
+			}
 		}
 
 		// Page controls (top)
@@ -304,8 +309,12 @@ export class KeyTermModal extends Modal {
 					.onClick(async () => {
 						// Persist blacklisted terms
 						if (this.blacklistManager && this.selection.rejected.size > 0) {
-							const rejectedArray = Array.from(this.selection.rejected);
-							await this.blacklistManager.addToBlacklist(rejectedArray);
+							try {
+								const rejectedArray = Array.from(this.selection.rejected);
+								await this.blacklistManager.addToBlacklist(rejectedArray);
+							} catch (error) {
+								console.warn("Failed to add terms to blacklist:", error);
+							}
 						}
 						this.onApply(this.selection);
 						this.close();

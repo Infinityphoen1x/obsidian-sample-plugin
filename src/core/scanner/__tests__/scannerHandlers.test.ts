@@ -75,6 +75,9 @@ describe('Phase 6: Document Scanner Handlers', () => {
 			persist: jest.fn().mockResolvedValue(undefined),
 		};
 
+		// Mock log function to return a resolved Promise
+		(log as jest.Mock).mockResolvedValue(undefined);
+
 		// Mock KeyTermModal to immediately invoke onApply callback with all selected terms
 		(KeyTermModal as jest.Mock).mockImplementation((app, terms, chunkSize, onApply, onCancel, blacklistManager) => {
 			// Simulate user clicking "Apply" immediately with all terms selected

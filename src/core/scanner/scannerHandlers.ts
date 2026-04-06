@@ -97,6 +97,19 @@ export async function handleDocumentScan(
 
 		new Notice(`📄 Scanning "${sourceFile.basename}"...`);
 
+		// Log scanning initiation
+		await log(
+			vault,
+			settings,
+			'document-scanning',
+			`Started scanning document: ${sourceFile.basename}`,
+			{
+				filename: sourceFile.basename,
+				path: sourceFile.path,
+				extension: sourceFile.extension,
+			}
+		).catch(err => console.warn("Failed to log scan start:", err));
+
 		// Scan the document
 		const scanResult = await scanMarkdown(sourceFile, content);
 
@@ -134,8 +147,22 @@ export async function handleDocumentScan(
 			blacklistManager
 		);
 	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error('Error scanning document:', error);
-		new Notice(`❌ Error scanning document: ${error}`);
+		new Notice(`❌ Error scanning document: ${errorMessage}`);
+		
+		// Log the error
+		await log(
+			vault,
+			settings,
+			'document-scanning',
+			`❌ Error during document scan: ${errorMessage}`,
+			{
+				filename: file.basename,
+				path: file.path,
+				errorStack: error instanceof Error ? error.stack : undefined,
+			}
+		).catch(err => console.error('Failed to log scan error:', err));
 	}
 }
 

@@ -247,3 +247,293 @@ This CSS provides styling for the timeline modal UI components.
 		margin-bottom: 8px;
 	}
 }
+
+/* ===============================================
+   Key Term Modal Styles
+   ======================================= */
+
+.key-term-modal-header {
+	margin-bottom: 16px;
+	padding-bottom: 12px;
+	border-bottom: 2px solid var(--divider-color);
+}
+
+.key-term-modal-header h2 {
+	margin: 0;
+	font-size: 20px;
+	color: var(--h2-color);
+}
+
+.key-term-modal-page-info {
+	margin: 8px 0;
+	font-size: 13px;
+	color: var(--text-muted);
+	padding: 8px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+}
+
+.key-term-modal-help {
+	margin: 12px 0;
+	padding: 10px;
+	background: var(--background-secondary);
+	border-left: 3px solid var(--accent-color);
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+.key-term-modal-stats {
+	display: flex;
+	gap: 16px;
+	margin: 12px 0;
+	padding: 10px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	font-size: 13px;
+	flex-wrap: wrap;
+}
+
+.key-term-modal-stats span {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--text-normal);
+}
+
+/* Control Buttons Section */
+.key-term-modal-controls {
+	margin: 16px 0;
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.key-term-modal-controls .setting-item {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.key-term-modal-controls button {
+	padding: 6px 12px;
+	border: 1px solid var(--divider-color);
+	background: var(--background-tertiary);
+	color: var(--text-normal);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	transition: all 0.2s ease;
+	min-width: 100px;
+}
+
+.key-term-modal-controls button:hover {
+	background: var(--accent-color);
+	color: white;
+	border-color: var(--accent-color);
+}
+
+.key-term-modal-controls button:active {
+	transform: scale(0.98);
+}
+
+/* Term List Container */
+.key-term-modal-list {
+	margin: 16px 0;
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	max-height: 400px;
+	overflow-y: auto;
+	border: 1px solid var(--divider-color);
+}
+
+/* Individual Term Row */
+.key-term-modal-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px;
+	margin-bottom: 8px;
+	background: var(--background-tertiary);
+	border-radius: 4px;
+	border: 1px solid var(--divider-color);
+	transition: all 0.2s ease;
+}
+
+.key-term-modal-item:hover {
+	background: var(--background-secondary);
+	border-color: var(--accent-color);
+}
+
+/* Checkbox Group */
+.key-term-checkbox-group {
+	display: flex;
+	gap: 12px;
+	min-width: 140px;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.key-term-checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.key-term-checkbox-label input[type="checkbox"] {
+	cursor: pointer;
+	width: 18px;
+	height: 18px;
+	accent-color: var(--accent-color);
+}
+
+.checkbox-label-text {
+	font-size: 11px;
+	color: var(--text-muted);
+}
+
+.key-term-checkbox-label input.key-term-selected:checked {
+	accent-color: var(--success-color, #4ade80);
+}
+
+.key-term-checkbox-label input.key-term-rejected:checked {
+	accent-color: var(--error-color, #ef4444);
+}
+
+/* Term Label */
+.key-term-label {
+	flex: 1;
+	padding: 0 8px;
+	font-size: 13px;
+	color: var(--text-normal);
+	word-break: break-word;
+	cursor: default;
+	user-select: text;
+	text-align: left;
+}
+
+/* Pagination Controls */
+.key-term-modal-pagination {
+	margin: 16px 0;
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	justify-content: space-between;
+}
+
+.key-term-modal-pagination .setting-item {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.key-term-modal-pagination button {
+	padding: 6px 12px;
+	border: 1px solid var(--divider-color);
+	background: var(--background-tertiary);
+	color: var(--text-normal);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	transition: all 0.2s ease;
+	min-width: 90px;
+}
+
+.key-term-modal-pagination button:hover:not(:disabled) {
+	background: var(--accent-color);
+	color: white;
+	border-color: var(--accent-color);
+}
+
+.key-term-modal-pagination button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Action Buttons (Apply/Cancel) */
+.key-term-modal-actions {
+	margin: 16px 0;
+	padding: 12px;
+	background: var(--background-secondary);
+	border-radius: 4px;
+	border-top: 2px solid var(--divider-color);
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+}
+
+.key-term-modal-actions .setting-item {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+}
+
+.key-term-modal-actions button {
+	padding: 8px 16px;
+	border: 1px solid var(--divider-color);
+	background: var(--background-tertiary);
+	color: var(--text-normal);
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	transition: all 0.2s ease;
+	min-width: 100px;
+}
+
+.key-term-modal-actions button.mod-cta {
+	background: var(--accent-color);
+	color: white;
+	border-color: var(--accent-color);
+}
+
+.key-term-modal-actions button:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.key-term-modal-actions button.mod-cta:hover {
+	background: var(--accent-color-dark, #0284c7);
+}
+
+/* Scrollbar Styling */
+.key-term-modal-list::-webkit-scrollbar {
+	width: 8px;
+}
+
+.key-term-modal-list::-webkit-scrollbar-track {
+	background: var(--background-secondary);
+	border-radius: 4px;
+}
+
+.key-term-modal-list::-webkit-scrollbar-thumb {
+	background: var(--divider-color);
+	border-radius: 4px;
+}
+
+.key-term-modal-list::-webkit-scrollbar-thumb:hover {
+	background: var(--accent-color);
+}
