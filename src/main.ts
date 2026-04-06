@@ -22,8 +22,9 @@ export default class MetadataOrganizerPlugin extends Plugin {
 	settings: PluginSettings;
 	managers: Managers;
 
+
 	async onload() {
-		console.log("Loading Metadata Organizer Plugin...");
+		console.debug("Loading Metadata Organizer Plugin...");
 
 		// Load settings
 		await this.loadSettings();
@@ -41,7 +42,7 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		try {
 			await initializeProtocolFolder(this.app.vault, this.settings);
 		} catch (error) {
-			console.warn("Warning initializing protocol folder:", error);
+			console.error("Warning initializing protocol folder:", error);
 		}
 
 		// Initialize all managers
@@ -52,14 +53,14 @@ export default class MetadataOrganizerPlugin extends Plugin {
 
 		// Auto-open main panel on first load
 		this.app.workspace.onLayoutReady(() => {
-			this.openMainPanel();
+			void this.openMainPanel();
 		});
 
-		console.log("Metadata Organizer Plugin loaded successfully");
+		console.debug("Metadata Organizer Plugin loaded successfully");
 	}
 
 	onunload() {
-		console.log("Unloading Metadata Organizer Plugin");
+		console.debug("Unloading Metadata Organizer Plugin");
 		// Clear all manager references
 		this.managers = {
 			blacklistManager: null,

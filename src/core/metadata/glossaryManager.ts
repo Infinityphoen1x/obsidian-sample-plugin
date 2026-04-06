@@ -58,7 +58,7 @@ export class GlossaryManager {
 				const content = await this.vault.read(glossaryFile);
 				const parsed = JSON.parse(content) as GlossaryTree;
 				this.tree = parsed;
-				console.log("Glossary loaded successfully");
+				console.debug("Glossary loaded successfully");
 			}
 		} catch (error) {
 			console.error("Error loading glossary:", error);

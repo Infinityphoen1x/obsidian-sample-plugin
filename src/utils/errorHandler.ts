@@ -7,7 +7,7 @@ import { Notice } from "obsidian";
 
 export interface ErrorContext {
 	operation: string;
-	context?: Record<string, any>;
+	context?: Record<string, unknown>;
 	severity: "error" | "warning" | "info";
 }
 
@@ -72,7 +72,7 @@ export function safeSyncOperation<T>(
  * Validate data before processing
  */
 export function validateData(
-	data: any,
+	data: unknown,
 	expectedType: string,
 	operationName: string
 ): boolean {

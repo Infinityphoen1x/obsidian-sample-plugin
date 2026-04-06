@@ -38,7 +38,7 @@ export async function handleDocumentScan(
 		
 		// Handle DOCX files
 		if (file.extension === 'docx') {
-			new Notice(`📄 Converting "${file.basename}.docx" to markdown...`);
+			new Notice(`Converting ${file.basename}.docx to markdown...`);
 			
 			try {
 				// Read DOCX file as binary
@@ -48,7 +48,7 @@ export async function handleDocumentScan(
 				content = await convertDocxToMarkdown(docxBuffer, file.basename);
 				
 				if (!content || content.length === 0) {
-					new Notice('❌ Failed to convert DOCX file - result is empty');
+					new Notice('Failed to convert DOCX file - result is empty');
 					return;
 				}
 				
@@ -74,28 +74,29 @@ export async function handleDocumentScan(
 					}
 				} catch (error) {
 					console.error('Error creating markdown file:', error);
-					new Notice('⚠️ Converted content. Could not save markdown file.');
+				new Notice('Converted content. Could not save markdown file.');
 					// Continue with scanning anyway - content is in memory
 				}
 			} catch (error) {
 				console.error('Error converting DOCX:', error);
-				new Notice(`❌ Failed to convert DOCX file: ${error}`);
+			new Notice(`Failed to convert DOCX file: ${error}`);
 				return;
 			}
 		} else if (file.extension === 'md') {
 			// Handle regular markdown files
 			content = await vault.read(file);
 		} else {
-			new Notice(`⚠️ Unsupported file type: ${file.extension}`);
+			new Notice(`Unsupported file type: ${file.extension}`);
 			return;
 		}
 		
 		if (!content) {
-			new Notice('⚠️ File is empty');
+			new Notice('File is empty');
 			return;
 		}
 
-		new Notice(`📄 Scanning "${sourceFile.basename}"...`);
+		console.debug(`[Scanner] Starting scan for file: ${sourceFile.basename}`);
+		new Notice(`Scanning ${sourceFile.basename}...`);
 
 		// Log scanning initiation
 		await log(
@@ -117,7 +118,7 @@ export async function handleDocumentScan(
 		const suggestedTerms = scanResult.tokens.slice(0, 50).map(t => t.word);
 
 		if (suggestedTerms.length === 0) {
-			new Notice('⚠️ No tokens found to suggest');
+			new Notice('No tokens found to suggest');
 			return;
 		}
 
@@ -141,7 +142,7 @@ export async function handleDocumentScan(
 			},
 			() => {
 				// On cancel
-				new Notice('Document scanning cancelled');
+				new Notice('Scanning cancelled');
 			},
 			settings,
 			blacklistManager
@@ -149,7 +150,7 @@ export async function handleDocumentScan(
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error('Error scanning document:', error);
-		new Notice(`❌ Error scanning document: ${errorMessage}`);
+		new Notice(`Error scanning document: ${errorMessage}`);
 		
 		// Log the error
 		await log(
@@ -187,7 +188,7 @@ function showKeyTermSelectionModal(
 				if (selection.selected.size > 0) {
 					await onApply(selection.selected);
 				} else {
-					new Notice('⚠️ No key terms selected');
+					new Notice('No key terms selected');
 				}
 				resolve();
 			},
@@ -226,7 +227,7 @@ async function processKeyTermSelection(
 	vault: Vault,
 	file: TFile,
 	content: string,
-	scanResult: any,
+	scanResult: unknown,
 	selectedKeyTerms: Set<string>,
 	settings: PluginSettings,
 	entityStore?: EntityStore
@@ -278,10 +279,10 @@ async function processKeyTermSelection(
 					entity.sources = [{
 						document: file.path,
 						lineNumbers: scanResult.tokens
-							.find((t: any) => t.word === keyTerm)
+							.find((t: unknown) => t.word === keyTerm)
 							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
 					}];
-					entity.tags = [...(scanResult.isChapter ? ['chapter'] : ['document']), ...scanResult.temporalTerms.map((t: any) => `temporal:${t.term}`)];
+					entity.tags = [...(scanResult.isChapter ? ['chapter'] : ['document']), ...scanResult.temporalTerms.map((t: unknown) => `temporal:${t.term}`)];
 					entityStore.updateEntity(entity.id, entity);
 					newCount++;
 				} else {
@@ -289,7 +290,7 @@ async function processKeyTermSelection(
 					existing.sources.push({
 						document: file.path,
 						lineNumbers: scanResult.tokens
-							.find((t: any) => t.word === keyTerm)
+							.find((t: unknown) => t.word === keyTerm)
 							?.positions.map((p: number) => content.substring(0, p).split('\n').length) || [1],
 					});
 					entityStore.updateEntity(existing.id, existing);

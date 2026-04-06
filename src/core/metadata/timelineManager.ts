@@ -129,18 +129,18 @@ export class TimelineManager {
 	/**
 	 * Parse generic CSV into objects
 	 */
-	private parseGenericCSV(csvContent: string): Record<string, any>[] {
+	private parseGenericCSV(csvContent: string): Record<string, unknown>[] {
 		const lines = csvContent.split("\n").filter((line) => line.trim());
 		if (lines.length < 2) return [];
 
 		const headers = this.parseCSVLine(lines[0] || "");
-		const rows: Record<string, any>[] = [];
+		const rows: Record<string, unknown>[] = [];
 
 		for (let i = 1; i < lines.length; i++) {
 			const values = this.parseCSVLine(lines[i] || "");
 			if (values.length === 0) continue;
 
-			const row: Record<string, any> = {};
+			const row: Record<string, unknown> = {};
 			headers.forEach((header, idx) => {
 				row[header] = values[idx] || "";
 			});

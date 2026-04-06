@@ -31,13 +31,33 @@ export async function log(
 	settings: PluginSettings,
 	category: LogCategory,
 	message: string,
-	data?: Record<string, any>
+	data?: Record<string, unknown>
 ): Promise<void> {
 	try {
 		const timestamp = new Date().toISOString();
 		const date = new Date().toISOString().split("T")[0];
 		const logFolder = getLogPath(settings, category);
 		const logFile = `${logFolder}/${date}.md`;
+
+		// Ensure the log folder exists by creating it recursively if needed
+		try {
+			const folders = logFolder.split('/').filter(f => f);
+			let currentPath = '';
+			for (const folder of folders) {
+				currentPath = currentPath ? `${currentPath}/${folder}` : folder;
+				try {
+					const existing = vault.getAbstractFileByPath(currentPath);
+					if (!existing) {
+						console.debug(`[Log] Creating log folder: ${currentPath}`);
+						await vault.createFolder(currentPath);
+					}
+				} catch (error) {
+					// Folder might already exist, continue
+				}
+			}
+		} catch (error) {
+			console.warn(`[Log] Warning creating log folder: ${error}`);
+		}
 
 		let content = `# ${category} Log - ${date}\n\n`;
 
@@ -46,14 +66,16 @@ export async function log(
 		const dataStr = data ? `**Data:** \`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\`\n` : "";
 
 		// Read existing log or create new
-		const file = vault.getFileByPath(logFile);
-		if (file) {
-			const existing = await vault.read(file);
+		const file = vault.getAbstractFileByPath(logFile);
+		if (file && file.name) {
+			const existing = await vault.read(file as unknown);
 			content = existing + `\n${entry}${dataStr}\n`;
-			await vault.modify(file, content);
+			await vault.modify(file as unknown, content);
+			console.debug(`[Log] Appended to log file: ${logFile}`);
 		} else {
 			content = content + `\n${entry}${dataStr}`;
 			await vault.create(logFile, content);
+			console.debug(`[Log] Created new log file: ${logFile}`);
 		}
 	} catch (error) {
 		console.error(`Error logging to ${category}:`, error);
@@ -114,7 +136,7 @@ export async function logTimelineOperation(
 	vault: Vault,
 	settings: PluginSettings,
 	operation: "snapshot-added" | "snapshot-updated" | "snapshot-removed" | "event-added" | "event-updated" | "event-removed",
-	details: Record<string, any>
+	details: Record<string, unknown>
 ): Promise<void> {
 	const data = {
 		operation,

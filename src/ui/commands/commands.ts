@@ -10,7 +10,7 @@ import { Plugin } from "obsidian";
 export function registerCommands(plugin: Plugin): void {
 	// Phase 1: Scan Document
 	plugin.addCommand({
-		id: "metadata-organizer-scan-document",
+		id: "scan-document",
 		name: "Scan document for entities",
 		callback: () => {
 			// TODO: Implement document scanning
@@ -19,7 +19,7 @@ export function registerCommands(plugin: Plugin): void {
 
 	// Phase 2: Metadata Review
 	plugin.addCommand({
-		id: "metadata-organizer-review",
+		id: "review",
 		name: "Review and organize metadata",
 		callback: () => {
 			// TODO: Implement metadata review modal
@@ -28,7 +28,7 @@ export function registerCommands(plugin: Plugin): void {
 
 	// Phase 3: Sub-metadata
 	plugin.addCommand({
-		id: "metadata-organizer-sub-metadata",
+		id: "sub-metadata",
 		name: "Create entity notes",
 		callback: () => {
 			// TODO: Implement sub-metadata modal
@@ -37,7 +37,7 @@ export function registerCommands(plugin: Plugin): void {
 
 	// Phase 4: Timeline
 	plugin.addCommand({
-		id: "metadata-organizer-timeline",
+		id: "timeline",
 		name: "Open timeline editor",
 		callback: () => {
 			// TODO: Implement timeline UI

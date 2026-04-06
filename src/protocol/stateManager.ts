@@ -8,7 +8,7 @@ export interface ModalState {
 	entityId?: string;
 	groupName?: string;
 	content?: string;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 	position?: { x: number; y: number };
 	scrollTop?: number;
 	timestamp: number;
@@ -124,7 +124,7 @@ export class StateManager {
 				console.debug("Error listing recovery files:", listError);
 			}
 
-			console.log(`Loaded ${states.length} recovery states`);
+			console.debug(`Loaded ${states.length} recovery states`);
 			return states;
 		} catch (error) {
 			console.warn("Error loading recovery states:", error);
@@ -215,7 +215,7 @@ export class StateManager {
 			// Restore state
 			try {
 				await restoreCallback(state);
-				console.log(`Restored ${modalType} modal state`);
+				console.debug(`Restored ${modalType} modal state`);
 
 				// Clean up recovery file after successful restore
 				await this.clearRecoveryState(modalType);
@@ -236,7 +236,7 @@ export class StateManager {
 	async clearAllRecovery(): Promise<void> {
 		try {
 			await this.clearRecoveryState(); // No filter = clear all
-			console.log("Recovery states cleared");
+			console.debug("Recovery states cleared");
 		} catch (error) {
 			console.warn("Error clearing all recovery:", error);
 		}

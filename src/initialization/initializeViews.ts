@@ -38,8 +38,8 @@ export async function activateTimelinePane(plugin: Plugin): Promise<void> {
 		active: true,
 	});
 
-	plugin.app.workspace.revealLeaf(leaf);
-	new Notice("✅ Opened timeline view");
+	await plugin.app.workspace.revealLeaf(leaf);
+	new Notice("Opened timeline view");
 }
 
 /**
@@ -63,6 +63,6 @@ export async function activateMainPanel(plugin: Plugin): Promise<void> {
 		active: true,
 	});
 
-	plugin.app.workspace.revealLeaf(leaf);
-	new Notice("✅ Opened main panel");
+	await plugin.app.workspace.revealLeaf(leaf);
+	new Notice("Opened main panel");
 }

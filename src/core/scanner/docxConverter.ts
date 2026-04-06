@@ -20,7 +20,7 @@ export async function convertDocxToMarkdown(
 ): Promise<string> {
 	try {
 		// Use require to dynamically load mammoth
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		 
 		const mammoth = require("mammoth");
 		
 		// Convert DOCX to HTML first

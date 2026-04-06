@@ -73,7 +73,7 @@ export class BlacklistManager {
 
 			// Persist to file
 			await this.persistBlacklist();
-			console.log(`Added ${normalizedWords.length} words to blacklist`);
+			console.debug(`Added ${normalizedWords.length} words to blacklist`);
 		} catch (error) {
 			console.error("Error adding to blacklist:", error);
 		}
@@ -90,7 +90,7 @@ export class BlacklistManager {
 			const normalizedWords = words.map((w) => w.toLowerCase().trim());
 			normalizedWords.forEach((word) => this.blacklist.delete(word));
 			await this.persistBlacklist();
-			console.log(`Removed ${normalizedWords.length} words from blacklist`);
+			console.debug(`Removed ${normalizedWords.length} words from blacklist`);
 		} catch (error) {
 			console.error("Error removing from blacklist:", error);
 		}

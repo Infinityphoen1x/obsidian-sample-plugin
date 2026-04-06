@@ -419,16 +419,16 @@ export class TimelineModal extends Modal {
 			text.setPlaceholder('Enter event text');
 			text.onChange((value) => {
 				// Store for button click
-				(customEl as any)._eventText = value;
+				(customEl as unknown)._eventText = value;
 			});
 		});
 
 		new Setting(customEl).addButton((btn) =>
 			btn.setButtonText('Add Event').onClick(async () => {
-				const text = (customEl as any)._eventText || '';
+				const text = (customEl as unknown)._eventText || '';
 				if (text.trim()) {
 					this.addCustomEvent(text);
-					(customEl as any)._eventText = '';
+					(customEl as unknown)._eventText = '';
 					// Re-render to show new event
 					timelineEl.empty();
 					this.renderEvents(timelineEl);

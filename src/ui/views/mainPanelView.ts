@@ -147,11 +147,18 @@ export class MainPanelView extends ItemView {
 		});
 
 		btn.addEventListener("click", async () => {
+			console.debug(`[Button Click] User clicked button for command: ${command}`);
 			try {
-				// Execute the command using Obsidian's command system
-				await (this.app as any).commands.executeCommandById(command);
+				console.debug(`[Button] Attempting to execute command: ${command}`);
+				// Execute the command using Obsidian's internal command system
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const commandResult = (this.app as any).commands?.executeCommandById?.(command);
+				if (commandResult instanceof Promise) {
+					await commandResult;
+				}
+				console.debug(`[Button] Command executed successfully`);
 			} catch (error) {
-				console.error(`Error executing command ${command}:`, error);
+				console.error(`[Button] Error executing command ${command}:`, error);
 				new Notice(`❌ Failed to execute: ${command}`);
 			}
 		});

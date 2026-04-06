@@ -38,7 +38,7 @@ export async function initializeManagers(
 		);
 		await managers.blacklistManager.loadBlacklist();
 		setBlacklistManager(managers.blacklistManager);
-		console.log(
+		console.debug(
 			`Blacklist manager initialized with ${managers.blacklistManager.size()} blacklisted words`
 		);
 	} catch (error) {
@@ -53,7 +53,7 @@ export async function initializeManagers(
 			settings.masterMetadataFile
 		);
 		await managers.entityStore.loadEntities();
-		console.log("Entity store initialized with cached entities");
+		console.debug("Entity store initialized with cached entities");
 	} catch (error) {
 		console.error("Failed to initialize entity store:", error);
 	}
@@ -65,7 +65,7 @@ export async function initializeManagers(
 			settings.protocolFolderName
 		);
 		await managers.timelineManager.loadTimeline();
-		console.log("Timeline manager initialized with cached snapshots");
+		console.debug("Timeline manager initialized with cached snapshots");
 	} catch (error) {
 		console.error("Failed to initialize timeline manager:", error);
 	}
@@ -78,7 +78,7 @@ export async function initializeManagers(
 			settings
 		);
 		await managers.hubManager.loadHub();
-		console.log("Hub manager initialized with cached cross-references");
+		console.debug("Hub manager initialized with cached cross-references");
 	} catch (error) {
 		console.error("Failed to initialize hub manager:", error);
 	}
@@ -91,7 +91,7 @@ export async function initializeManagers(
 			settings
 		);
 		await managers.glossaryManager.loadGlossary();
-		console.log("Glossary manager initialized");
+		console.debug("Glossary manager initialized");
 	} catch (error) {
 		console.error("Failed to initialize glossary manager:", error);
 	}

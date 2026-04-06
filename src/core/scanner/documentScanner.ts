@@ -83,7 +83,7 @@ export function generateFrontmatter(
 	const temporalTags = generateTemporalTags(scanResult.temporalTerms);
 	const allTags = [...temporalTags, ...additionalTags];
 
-	const frontmatter: Record<string, any> = {
+	const frontmatter: Record<string, unknown> = {
 		type: "document",
 		scanned_date: new Date().toISOString(),
 		is_chapter: scanResult.isChapter,

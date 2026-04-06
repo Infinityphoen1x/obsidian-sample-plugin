@@ -72,8 +72,8 @@ export async function saveIndex(
 	const indexJSON = JSON.stringify(indexData, null, 2);
 
 	try {
-		const existingFile = vault.getFileByPath(indexPath) as TFile;
-		if (existingFile) {
+		const existingFile = vault.getFileByPath(indexPath);
+		if (existingFile instanceof TFile) {
 			await vault.modify(existingFile, indexJSON);
 		} else {
 			await vault.create(indexPath, indexJSON);
@@ -99,8 +99,8 @@ export async function loadIndex(
 	const indexPath = `${folderPath}/${fileName}`;
 
 	try {
-		const file = vault.getFileByPath(indexPath) as TFile;
-		if (!file) {
+		const file = vault.getFileByPath(indexPath);
+		if (!(file instanceof TFile)) {
 			console.warn(`Index file not found: ${indexPath}`);
 			return null;
 		}

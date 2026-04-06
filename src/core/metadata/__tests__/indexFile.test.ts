@@ -12,11 +12,22 @@ import {
 const createMockVault = (): Vault => {
 	const mockVault = {
 		getFileByPath: jest.fn().mockReturnValue(null),
+		getAbstractFileByPath: jest.fn().mockReturnValue(null),
 		read: jest.fn().mockResolvedValue("{}"),
 		create: jest.fn().mockResolvedValue(undefined),
 		modify: jest.fn().mockResolvedValue(undefined),
 	} as any;
 	return mockVault as Vault;
+};
+
+// Create a mock TFile that passes instanceof checks
+const createMockTFile = (): TFile => {
+	const mock = Object.create(TFile.prototype);
+	mock.path = "";
+	mock.name = "";
+	mock.basename = "";
+	mock.extension = "";
+	return mock as TFile;
 };
 
 describe("IndexFile - buildIndex", () => {
@@ -159,7 +170,7 @@ describe("IndexFile - saveIndex", () => {
 	});
 
 	test("should modify existing index file", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 
 		await saveIndex(mockVault, testIndex, ".metadata", "index.json");
@@ -220,7 +231,7 @@ describe("IndexFile - loadIndex", () => {
 	});
 
 	test("should load index from vault", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 
 		const indexData = {
@@ -246,7 +257,7 @@ describe("IndexFile - loadIndex", () => {
 	});
 
 	test("should reconstruct Maps from arrays", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 
 		const indexData = {
@@ -268,7 +279,7 @@ describe("IndexFile - loadIndex", () => {
 	});
 
 	test("should use defaults for missing properties", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 		(mockVault.read as jest.Mock).mockResolvedValue("{}");
 
@@ -280,7 +291,7 @@ describe("IndexFile - loadIndex", () => {
 	});
 
 	test("should handle load errors gracefully", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 		(mockVault.read as jest.Mock).mockRejectedValue(new Error("Read failed"));
 
@@ -290,7 +301,7 @@ describe("IndexFile - loadIndex", () => {
 	});
 
 	test("should handle malformed JSON", async () => {
-		const mockFile = {} as TFile;
+		const mockFile = createMockTFile();
 		(mockVault.getFileByPath as jest.Mock).mockReturnValue(mockFile);
 		(mockVault.read as jest.Mock).mockResolvedValue("{ invalid json }");
 
@@ -420,7 +431,7 @@ describe("IndexFile - Integration", () => {
 		const savedJson = (mockVault.create as jest.Mock).mock.calls[0][1];
 
 		// Load
-		(mockVault.getFileByPath as jest.Mock).mockReturnValue({} as TFile);
+		(mockVault.getFileByPath as jest.Mock).mockReturnValue(createMockTFile());
 		(mockVault.read as jest.Mock).mockResolvedValue(savedJson);
 
 		const loaded = await loadIndex(mockVault, ".metadata", "index.json");

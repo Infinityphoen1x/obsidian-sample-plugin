@@ -23,7 +23,7 @@ export function parseCSV(csvContent: string): Entity[] {
 		const values = parseCSVLine(lines[i] ?? "");
 		if (values.length === 0) continue;
 
-		const row: Record<string, any> = {};
+		const row: Record<string, unknown> = {};
 		headers.forEach((header, idx) => {
 			row[header] = values[idx] || "";
 		});

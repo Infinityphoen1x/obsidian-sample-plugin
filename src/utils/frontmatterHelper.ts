@@ -1,7 +1,7 @@
 import { TFile, Vault } from "obsidian";
 
 export interface FrontmatterData {
-	[key: string]: string | number | boolean | string[] | Record<string, any>;
+	[key: string]: string | number | boolean | string[] | Record<string, unknown>;
 }
 
 /**
@@ -39,16 +39,16 @@ export function parseFrontmatter(markdown: string): {
 		// Parse JSON values
 		if (value.startsWith("[") || value.startsWith("{")) {
 			try {
-				value = JSON.parse(value) as any;
+				value = JSON.parse(value);
 			} catch (e) {
 				// Keep as string if not valid JSON
 			}
 		} else if (value === "true") {
-			value = true as any;
+			value = true as unknown;
 		} else if (value === "false") {
-			value = false as any;
+			value = false as unknown;
 		} else if (!isNaN(Number(value)) && value !== "") {
-			value = Number(value) as any;
+			value = Number(value) as unknown;
 		}
 
 		frontmatter[key] = value;

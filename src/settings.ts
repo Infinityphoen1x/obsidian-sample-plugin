@@ -19,8 +19,8 @@ export class MetadataOrganizerSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		// General Settings Section
-		containerEl.createEl("h2", { text: "General Settings" });
+		// General settings section
+		;
 
 		new Setting(containerEl)
 			.setName("Protocol Folder Name")
@@ -49,7 +49,7 @@ export class MetadataOrganizerSettingTab extends PluginSettingTab {
 			);
 
 		// Feature Flags
-		containerEl.createEl("h2", { text: "Features" });
+		new Setting(containerEl).setName("Features").setHeading();
 
 		new Setting(containerEl)
 			.setName("Desktop Only Mode")
@@ -87,8 +87,8 @@ export class MetadataOrganizerSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Logging Settings
-		containerEl.createEl("h2", { text: "Logging & Debugging" });
+		// Logging & debugging
+		new Setting(containerEl).setName("Logging & debugging").setHeading();
 
 		new Setting(containerEl)
 			.setName("Log Level")
@@ -131,7 +131,7 @@ export class MetadataOrganizerSettingTab extends PluginSettingTab {
 			);
 
 		// Advanced Settings
-		containerEl.createEl("h2", { text: "Advanced" });
+		new Setting(containerEl).setName("Advanced").setHeading();
 
 		new Setting(containerEl)
 			.setName("Auto-Format Frontmatter")
@@ -159,13 +159,13 @@ export class MetadataOrganizerSettingTab extends PluginSettingTab {
 					})
 			);
 
-		// Reset to Defaults Button
+		// Reset to defaults button
 		containerEl.createEl("hr");
 
 		new Setting(containerEl)
 			.addButton((btn) =>
 				btn
-					.setButtonText("Reset to Defaults")
+					.setButtonText("Reset to defaults")
 					.setCta()
 					.onClick(async () => {
 						this.plugin.settings = { ...DEFAULT_SETTINGS };

@@ -182,7 +182,7 @@ export class KeyTermModal extends Modal {
 
 		// Header with title and page counter
 		const header = this.contentEl.createDiv("key-term-modal-header");
-		header.createEl("h2", { text: "Select Key Terms" });
+		header.createEl("h2", { text: "Select key terms" });
 
 		const pageInfo = this.contentEl.createDiv("key-term-modal-page-info");
 		const totalPages = this.getTotalPages();
@@ -216,7 +216,7 @@ export class KeyTermModal extends Modal {
 		new Setting(topControls)
 			.addButton((btn) =>
 				btn
-					.setButtonText("Select All")
+					.setButtonText("Select all")
 					.onClick(() => {
 						this.selectAllPage();
 						this.render();
@@ -224,7 +224,7 @@ export class KeyTermModal extends Modal {
 			)
 			.addButton((btn) =>
 				btn
-					.setButtonText("Deselect All")
+					.setButtonText("Deselect all")
 					.onClick(() => {
 						this.deselectAllPage();
 						this.render();
@@ -232,7 +232,7 @@ export class KeyTermModal extends Modal {
 			)
 			.addButton((btn) =>
 				btn
-					.setButtonText("Reject All")
+					.setButtonText("Reject all")
 					.onClick(() => {
 						this.rejectAllPage();
 						this.render();

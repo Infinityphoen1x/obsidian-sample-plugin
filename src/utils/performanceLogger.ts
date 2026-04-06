@@ -7,7 +7,7 @@ export interface PerformanceMetric {
 	operation: string;
 	duration: number; // milliseconds
 	timestamp: number;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 	status: "success" | "error" | "warning";
 }
 
@@ -59,7 +59,7 @@ export class PerformanceLogger {
 	async endOperation(
 		operationName: string,
 		status: "success" | "error" | "warning" = "success",
-		metadata?: Record<string, any>
+		metadata?: Record<string, unknown>
 	): Promise<void> {
 		try {
 			const startTime = this.currentOperations.get(operationName);
@@ -249,12 +249,12 @@ export class PerformanceLogger {
 
 			const existingFile = this.vault.getAbstractFileByPath(this.metricsFilePath);
 			if (existingFile && existingFile.name.endsWith(".json")) {
-				await this.vault.modify(existingFile as any, metricsJSON);
+				await this.vault.modify(existingFile as unknown, metricsJSON);
 			} else {
 				await this.vault.create(this.metricsFilePath, metricsJSON);
 			}
 
-			console.log("Performance metrics saved");
+			console.debug("Performance metrics saved");
 		} catch (error) {
 			console.warn("Error saving metrics:", error);
 		}
@@ -267,7 +267,7 @@ export class PerformanceLogger {
 		try {
 			this.metrics.clear();
 			this.currentOperations.clear();
-			console.log("Performance metrics cleared");
+			console.debug("Performance metrics cleared");
 		} catch (error) {
 			console.debug("Error clearing metrics:", error);
 		}

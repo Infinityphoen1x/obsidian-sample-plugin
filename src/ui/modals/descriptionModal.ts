@@ -120,8 +120,8 @@ export class DescriptionModal extends Modal {
 						}
 
 						await this.onApply({
-							entityId: this.selectedEntity!.id,
-							entityName: this.selectedEntity!.name,
+							entityId: this.selectedEntity.id,
+							entityName: this.selectedEntity.name,
 							description: this.descriptionText,
 							cancelled: false,
 						});
