@@ -1,0 +1,7 @@
+World Building
+
+Fundamental Energy:
+
+Causality – Energy/Matter(?) manipulated by the System. All things must return to their origin and cause. Zalec Authority uses this to give Conlan Deus Ex Machina skill, and all Primordial Constructs use this. Lucy tried to access it by making her Charter of Tenthis, but failed, only creating a lesser primordial construct, only accessing high degrees of cause and effect. ‘Influence’ and cause and effect are decomposed forms of this. Energy of spacetime. 
+
+Influence: metaphysical force that can be manipulated to make ‘concepts’ into physical phenomena. To manipulate it this way, requires spiritual energy. Influence is composed of spiritual energy, but is a sum of all of an individual’s characteristics. Also works as the sum of characteristics for objects, animals, etc. Everything in the realms has influence, from people to objects to animals to planes, worlds, realms, etc. Skills work using influence, and System manipulates higher form of influence to give stats and stuff to people. A user can increase their ability to manipulate influence by gaining spiritual energy, which has a side effect of increasing their ‘field of influence’, what mages call the area they can manifest runes within. It’s this method of using spiritual energy that controls Status screens and System functions. Age increases influence, which in turn increases soul presence, due to gaining more information of a User over time. 

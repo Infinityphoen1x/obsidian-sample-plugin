@@ -2,6 +2,8 @@ import { Plugin, Notice, MarkdownView, TFile } from "obsidian";
 import { PluginSettings } from "../../types";
 import { EntityStore } from "../../core/metadata/entityStore";
 import { TimelineManager } from "../../core/metadata/timelineManager";
+import { HubManager } from "../../core/metadata/hubManager";
+import { GlossaryManager } from "../../core/metadata/glossaryManager";
 import { BlacklistManager } from "../../core/scanner/blacklistManager";
 import { handleDocumentScan } from "../../core/scanner/scannerHandlers";
 import { handleMetadataReview, handleSubMetadata, handleTimeline } from "../handlers/modalHandlers";
@@ -12,6 +14,8 @@ export interface MetadataCommandContext {
 	settings: PluginSettings;
 	entityStore: EntityStore | null;
 	timelineManager: TimelineManager | null;
+	hubManager: HubManager | null;
+	glossaryManager: GlossaryManager | null;
 	blacklistManager: BlacklistManager | null;
 }
 
@@ -19,7 +23,7 @@ export interface MetadataCommandContext {
  * Register metadata-related commands
  */
 export function registerMetadataCommands(context: MetadataCommandContext): void {
-	const { plugin, settings, entityStore, timelineManager, blacklistManager } = context;
+	const { plugin, settings, entityStore, timelineManager, hubManager, glossaryManager, blacklistManager } = context;
 
 	// Scan Document command
 	plugin.addCommand({
@@ -57,7 +61,7 @@ export function registerMetadataCommands(context: MetadataCommandContext): void 
 				console.debug("[Command] Starting document scan for:", file.path);
 				void (async () => {
 					try {
-						await scanDocument(file, plugin, settings, entityStore, blacklistManager);
+						await scanDocument(file, plugin, settings, entityStore, hubManager, glossaryManager, blacklistManager);
 						console.debug("[Command] Document scan completed");
 					} catch (error) {
 						console.error("[Command] Error during scan:", error);
@@ -95,7 +99,8 @@ export function registerMetadataCommands(context: MetadataCommandContext): void 
 				plugin.app.vault,
 				entities,
 				settings,
-				entityStore
+				entityStore,
+				glossaryManager
 			);
 		},
 	});
@@ -140,6 +145,8 @@ async function scanDocument(
 	plugin: Plugin,
 	settings: PluginSettings,
 	entityStore: EntityStore | null,
+	hubManager: HubManager | null,
+	glossaryManager: GlossaryManager | null,
 	blacklistManager: BlacklistManager | null
 ): Promise<void> {
 	if (!entityStore) {
@@ -153,6 +160,8 @@ async function scanDocument(
 		file,
 		settings,
 		entityStore,
+		hubManager,
+		glossaryManager,
 		blacklistManager
 	);
 }

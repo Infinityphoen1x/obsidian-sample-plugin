@@ -5,7 +5,7 @@
  * where all metadata, timelines, logs, and cache files are stored.
  */
 
-import { Vault, TFolder } from "obsidian";
+import { Vault } from "obsidian";
 import { PluginSettings } from "../types";
 
 /**
@@ -109,7 +109,7 @@ export function getProtocolFolderPath(settings: PluginSettings): string {
  */
 export function getLogPath(
 	settings: PluginSettings,
-	category: "document-scanning" | "metadata-review" | "sub-metadata-review" | "description-edits" | "timeline-edits" | "hub-updates" | "glossary-updates"
+	category: "document-scanning" | "metadata-review" | "sub-metadata-review" | "description-edits" | "timeline-edits" | "hub-updates" | "glossary-updates" | "scan-errors"
 ): string {
 	return `${settings.protocolFolderName}/logs/${category}`;
 }

@@ -110,21 +110,3 @@ export function generateFrontmatter(
 
 	return yaml;
 }
-
-/**
- * Prepend frontmatter to document content
- * @param content Original content
- * @param frontmatter Frontmatter to add
- * @returns Content with frontmatter prepended
- */
-export function prependFrontmatter(content: string, frontmatter: string): string {
-	// Remove existing frontmatter if present
-	if (content.startsWith("---")) {
-		const endMarker = content.indexOf("---", 3);
-		if (endMarker > 3) {
-			content = content.substring(endMarker + 3).trim();
-		}
-	}
-
-	return frontmatter + "\n" + content;
-}

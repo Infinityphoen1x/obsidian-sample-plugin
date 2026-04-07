@@ -7,13 +7,14 @@
 
 import { App, Notice, Vault, TFile } from 'obsidian';
 import { Entity, PluginSettings, TimelineEvent } from '../../types';
-import { MetadataReviewModal, EntityGroup, MetadataReviewResult } from '../modals/metadataReviewModal';
-import { SubMetadataModal, ChildNoteConfig, SubMetadataResult } from '../modals/subMetadataModal';
+import { MetadataReviewModal, MetadataReviewResult } from '../modals/metadataReviewModal';
+import { SubMetadataModal, SubMetadataResult } from '../modals/subMetadataModal';
 import { TimelineModal, TimelineModalResult } from '../modals/timelineModal';
 import { DescriptionModal, DescriptionModalResult } from '../modals/descriptionModal';
 import { log } from '../../protocol/logManager';
 import { EntityStore } from '../../core/metadata/entityStore';
 import { TimelineManager } from '../../core/metadata/timelineManager';
+import { GlossaryManager } from '../../core/metadata/glossaryManager';
 import { addTagsToFrontmatter } from '../../utils/frontmatterHelper';
 
 /**
@@ -24,7 +25,8 @@ export async function handleMetadataReview(
 	vault: Vault,
 	entities: Entity[],
 	settings: PluginSettings,
-	entityStore?: EntityStore
+	entityStore?: EntityStore,
+	glossaryManager?: GlossaryManager | null
 ): Promise<void> {
 	return new Promise((resolve) => {
 		const modal = new MetadataReviewModal(
@@ -125,9 +127,21 @@ ${group.entities.map(e => `| [[${e.name}]] | ${e.frequency} | ${e.sources.map(s 
 							console.error('Error updating source document frontmatter:', error);
 							new Notice(`⚠️ Source document tags may not have been updated: ${error}`);
 						}
+					// Build glossary from groups
+					if (glossaryManager && entities.length > 0) {
+						try {
+							// Note: buildFromGroupsAndEntities expects Group[] from the Group interface
+							// The EntityGroup type from MetadataReviewModal is different
+							// For now, just build from all entities without group structure
+							glossaryManager.buildFromGroupsAndEntities([], entities);
+							console.debug('Glossary built successfully');
+						} catch (error) {
+							console.warn('Glossary building error (non-fatal):', error);
+						}
+					}
 
-						// Log the action
-						await log(
+					// Log the action
+					await log(
 							vault,
 							settings,
 							'metadata-review',

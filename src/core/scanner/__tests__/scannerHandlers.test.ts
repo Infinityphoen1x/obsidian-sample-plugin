@@ -25,13 +25,16 @@ jest.mock('../../../ui/modals/keyTermModal');
 
 jest.mock('../../../protocol/logManager', () => ({
 	log: jest.fn(),
+	logScanError: jest.fn(),
+	logEntityError: jest.fn(),
+	logScanSummary: jest.fn(),
 }));
 
 // Imports for mocked modules
 import { scanMarkdown, generateFrontmatter } from '../documentScanner';
 import { wikiLinkTemporalTerms } from '../temporalTagger';
 import { KeyTermModal } from '../../../ui/modals/keyTermModal';
-import { log } from '../../../protocol/logManager';
+import { log, logScanError, logEntityError, logScanSummary } from '../../../protocol/logManager';
 
 describe('Phase 6: Document Scanner Handlers', () => {
 	let mockApp: any;
@@ -77,6 +80,9 @@ describe('Phase 6: Document Scanner Handlers', () => {
 
 		// Mock log function to return a resolved Promise
 		(log as jest.Mock).mockResolvedValue(undefined);
+		(logScanError as jest.Mock).mockResolvedValue(undefined);
+		(logEntityError as jest.Mock).mockResolvedValue(undefined);
+		(logScanSummary as jest.Mock).mockResolvedValue(undefined);
 
 		// Mock KeyTermModal to immediately invoke onApply callback with all selected terms
 		(KeyTermModal as jest.Mock).mockImplementation((app, terms, chunkSize, onApply, onCancel, blacklistManager) => {

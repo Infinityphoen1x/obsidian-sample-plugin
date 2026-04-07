@@ -35,32 +35,3 @@ export function generateEntityId(term: string, timestamp?: number): string {
 	const seq = String(ts % 10000).padStart(4, "0");
 	return `ent_${hash}_${seq}`;
 }
-
-/**
- * Verify if a string is a valid entity ID
- * @param id The ID to validate
- * @returns True if valid entity ID format
- */
-export function isValidEntityId(id: string): boolean {
-	return /^ent_[a-f0-9]{6}_\d{4}$/.test(id);
-}
-
-/**
- * Extract hash from entity ID
- * @param id The entity ID
- * @returns The 6-character hash portion
- */
-export function getHashFromId(id: string): string {
-	const match = id.match(/^ent_([a-f0-9]{6})_/);
-	return match?.[1] ?? "";
-}
-
-/**
- * Extract sequence from entity ID
- * @param id The entity ID
- * @returns The 4-digit sequence portion
- */
-export function getSeqFromId(id: string): string {
-	const match = id.match(/_(\d{4})$/);
-	return match?.[1] ?? "";
-}

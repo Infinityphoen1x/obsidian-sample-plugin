@@ -6,9 +6,6 @@
 import {
 	hashTerm,
 	generateEntityId,
-	isValidEntityId,
-	getHashFromId,
-	getSeqFromId,
 } from "../idGenerator.ts";
 
 describe("idGenerator", () => {
@@ -98,69 +95,6 @@ describe("idGenerator", () => {
 			expect(ids[0]?.endsWith("_5234")).toBe(true);
 			expect(ids[1]?.endsWith("_5234")).toBe(true);
 			expect(ids[2]?.endsWith("_5234")).toBe(true);
-		});
-	});
-
-	describe("isValidEntityId", () => {
-		it("should validate correct entity ID format", () => {
-			expect(isValidEntityId("ent_abc123_0001")).toBe(true);
-			expect(isValidEntityId("ent_000000_0000")).toBe(true);
-			expect(isValidEntityId("ent_ffffff_9999")).toBe(true);
-		});
-
-		it("should reject invalid formats", () => {
-			expect(isValidEntityId("ent_123_001")).toBe(false); // Wrong hash length
-			expect(isValidEntityId("ent_abcdefg_0001")).toBe(false); // Hash too long
-			expect(isValidEntityId("ent_abc123_00001")).toBe(false); // Seq too long
-			expect(isValidEntityId("ent_abc123")).toBe(false); // Missing seq
-			expect(isValidEntityId("abc123_0001")).toBe(false); // Missing prefix
-			expect(isValidEntityId("ent_ABCDEF_0001")).toBe(false); // Uppercase hash
-			expect(isValidEntityId("ent_abc123_abcd")).toBe(false); // Non-numeric seq
-		});
-
-		it("should reject empty string", () => {
-			expect(isValidEntityId("")).toBe(false);
-		});
-
-		it("should reject null-like strings", () => {
-			expect(isValidEntityId("null")).toBe(false);
-			expect(isValidEntityId("undefined")).toBe(false);
-		});
-	});
-
-	describe("getHashFromId", () => {
-		it("should extract hash from valid ID", () => {
-			const hash = getHashFromId("ent_abc123_0001");
-			expect(hash).toBe("abc123");
-		});
-
-		it("should handle different hashes", () => {
-			expect(getHashFromId("ent_000000_0001")).toBe("000000");
-			expect(getHashFromId("ent_ffffff_0001")).toBe("ffffff");
-		});
-
-		it("should return empty string for invalid ID", () => {
-			expect(getHashFromId("invalid")).toBe("");
-			expect(getHashFromId("")).toBe("");
-			expect(getHashFromId("ent_123_0001")).toBe("");
-		});
-	});
-
-	describe("getSeqFromId", () => {
-		it("should extract sequence from valid ID", () => {
-			const seq = getSeqFromId("ent_abc123_0001");
-			expect(seq).toBe("0001");
-		});
-
-		it("should handle different sequences", () => {
-			expect(getSeqFromId("ent_abc123_0000")).toBe("0000");
-			expect(getSeqFromId("ent_abc123_9999")).toBe("9999");
-		});
-
-		it("should return empty string for invalid ID", () => {
-			expect(getSeqFromId("invalid")).toBe("");
-			expect(getSeqFromId("")).toBe("");
-			expect(getSeqFromId("ent_abc123_00001")).toBe("");
 		});
 	});
 

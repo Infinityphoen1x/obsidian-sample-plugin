@@ -16,7 +16,19 @@ export type LogCategory =
 	| "description-edits"
 	| "timeline-edits"
 	| "hub-updates"
-	| "glossary-updates";
+	| "glossary-updates"
+	| "scan-errors";
+
+export type ScanErrorType = 
+	| "docx-conversion"
+	| "markdown-creation"
+	| "entity-creation"
+	| "entity-update"
+	| "hub-detection"
+	| "wikilink"
+	| "persistence"
+	| "glossary-update"
+	| "unknown";
 
 /**
  * Log a message to protocol folder
@@ -146,4 +158,130 @@ export async function logTimelineOperation(
 	
 	const message = `Timeline operation: ${operation}`;
 	await log(vault, settings, "timeline-edits", message, data);
+}
+
+/**
+ * Log a scan-specific error with detailed context
+ */
+export async function logScanError(
+	vault: Vault,
+	settings: PluginSettings,
+	errorType: ScanErrorType,
+	errorMessage: string,
+	context: {
+		filePath?: string;
+		fileName?: string;
+		errorStack?: string;
+		failedEntity?: string;
+		failedEntities?: string[];
+		partialSuccess?: boolean;
+		successCount?: number;
+		failureCount?: number;
+		additionalInfo?: Record<string, unknown>;
+	}
+): Promise<void> {
+	const data = {
+		errorType,
+		errorMessage,
+		filePath: context.filePath,
+		fileName: context.fileName,
+		failedEntity: context.failedEntity,
+		failedEntities: context.failedEntities,
+		partialSuccess: context.partialSuccess,
+		successCount: context.successCount,
+		failureCount: context.failureCount,
+		errorStack: context.errorStack,
+		...context.additionalInfo,
+		timestamp: new Date().toISOString(),
+	};
+
+	const message = `⚠️ Scan Error [${errorType}]: ${errorMessage}${context.partialSuccess ? ' (partial success)' : ''}`;
+	await log(vault, settings, "scan-errors", message, data).catch((err) =>
+		console.error("Failed to log scan error:", err)
+	);
+}
+
+/**
+ * Log entity-specific creation/update failure
+ */
+export async function logEntityError(
+	vault: Vault,
+	settings: PluginSettings,
+	operation: "create" | "update",
+	entityName: string,
+	errorMessage: string,
+	context?: Record<string, unknown>
+): Promise<void> {
+	const data = {
+		operation,
+		entityName,
+		errorMessage,
+		...context,
+		timestamp: new Date().toISOString(),
+	};
+
+	const message = `Entity ${operation} failed: "${entityName}" - ${errorMessage}`;
+	await log(vault, settings, "scan-errors", message, data).catch((err) =>
+		console.error("Failed to log entity error:", err)
+	);
+}
+
+/**
+ * Log scan completion with summary and warnings
+ */
+export async function logScanSummary(
+	vault: Vault,
+	settings: PluginSettings,
+	filePath: string,
+	fileName: string,
+	summary: {
+		totalProcessed: number;
+		newEntities: number;
+		updatedEntities: number;
+		keyTermsWikilinked: number;
+		temporalTermsFound: number;
+		hubsDetected: number;
+		docxConverted: boolean;
+		markdownCreated: boolean;
+		warnings: Array<{
+			type: string;
+			message: string;
+			count?: number;
+		}>;
+		errors: Array<{
+			type: ScanErrorType;
+			message: string;
+			context?: Record<string, unknown>;
+		}>;
+		executionTimeMs: number;
+	}
+): Promise<void> {
+	const hasErrors = summary.errors.length > 0;
+	const hasWarnings = summary.warnings.length > 0;
+	const status = hasErrors ? "❌ Failed" : hasWarnings ? "⚠️ Completed with warnings" : "✅ Success";
+
+	const data = {
+		filePath,
+		fileName,
+		status,
+		totalProcessed: summary.totalProcessed,
+		newEntities: summary.newEntities,
+		updatedEntities: summary.updatedEntities,
+		keyTermsWikilinked: summary.keyTermsWikilinked,
+		temporalTermsFound: summary.temporalTermsFound,
+		hubsDetected: summary.hubsDetected,
+		docxConverted: summary.docxConverted,
+		markdownCreated: summary.markdownCreated,
+		warningCount: summary.warnings.length,
+		warnings: summary.warnings.length > 0 ? summary.warnings : undefined,
+		errorCount: summary.errors.length,
+		errors: summary.errors.length > 0 ? summary.errors : undefined,
+		executionTimeMs: summary.executionTimeMs,
+		timestamp: new Date().toISOString(),
+	};
+
+	const message = `${status} Scan Summary: "${fileName}" - ${summary.newEntities} new, ${summary.updatedEntities} updated, ${summary.keyTermsWikilinked} wikilinked`;
+	await log(vault, settings, "document-scanning", message, data).catch((err) =>
+		console.error("Failed to log scan summary:", err)
+	);
 }

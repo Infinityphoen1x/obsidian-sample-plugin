@@ -3,14 +3,17 @@
  *
  * DOM rendering for timeline visualization
  * Displays events as vertical or horizontal timeline
+ * With optional Mermaid diagram rendering
  */
 
 import { TimelineEvent } from "../../types";
+import mermaid from "mermaid";
 
 export interface TimelineRendererOptions {
 	orientation?: "vertical" | "horizontal";
 	showSources?: boolean;
 	highlightColor?: string;
+	useMermaid?: boolean;
 }
 
 /**
@@ -32,8 +35,60 @@ export class TimelineRenderer {
 			orientation: "vertical",
 			showSources: true,
 			highlightColor: "#457B9D",
+			useMermaid: false,
 			...options,
 		};
+		
+		// Initialize mermaid if needed
+		if (this.options.useMermaid) {
+			try {
+				mermaid.initialize({ startOnLoad: true, theme: "default" });
+			} catch (error) {
+				console.warn("Failed to initialize Mermaid:", error);
+			}
+		}
+	}
+
+	/**
+	 * Generate Mermaid timeline diagram specification
+	 */
+	private generateMermaidSpec(): string {
+		if (this.events.length === 0) {
+			return "---\nconfig:\n  fontSize: 12\nend---\ntimeline\n  title Empty Timeline\n";
+		}
+
+		let spec = "---\nconfig:\n  fontSize: 12\nend---\ntimeline\n";
+		spec += `  title Timeline with ${this.events.length} events\n`;
+
+		this.events.forEach((event, index) => {
+			// Use temporal terms or event title
+			const label = event.temporalTerms?.[0] || `Event ${index + 1}`;
+			// Use first 50 chars of sentence
+			const desc = (event.sentence || `Event ${index + 1}`).substring(0, 50);
+			spec += `  ${label} : ${desc}\n`;
+		});
+
+		return spec;
+	}
+
+	/**
+	 * Render timeline using Mermaid diagram
+	 */
+	private renderMermaidDiagram(): void {
+		const spec = this.generateMermaidSpec();
+		const diagramEl = this.container.createDiv({ cls: "mermaid" });
+		diagramEl.textContent = spec;
+
+		try {
+			mermaid.contentLoaded();
+		} catch (error) {
+			console.warn("Mermaid rendering error:", error);
+			diagramEl.empty();
+			diagramEl.createEl("p", { 
+				text: "Timeline diagram rendering not available",
+				cls: "error-message"
+			});
+		}
 	}
 
 	/**
@@ -45,6 +100,11 @@ export class TimelineRenderer {
 		if (this.events.length === 0) {
 			this.container.createEl("p", { text: "No events to display", cls: "empty-state" });
 			return;
+		}
+
+		// Render Mermaid diagram if enabled
+		if (this.options.useMermaid) {
+			this.renderMermaidDiagram();
 		}
 
 		const timelineEl = this.container.createDiv({ cls: "timeline-container" });

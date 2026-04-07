@@ -3,7 +3,7 @@
  * Tests document scanning, chapter detection, and frontmatter generation
  */
 
-import { generateFrontmatter, prependFrontmatter } from "../documentScanner.ts";
+import { generateFrontmatter } from "../documentScanner.ts";
 import { DocScanResult } from "../../../types.ts";
 
 describe("documentScanner", () => {
@@ -109,133 +109,6 @@ describe("documentScanner", () => {
 			const largeDoc = { ...baseScanResult, wordCount: 1000000 };
 			const fm = generateFrontmatter(largeDoc);
 			expect(fm).toContain("word_count: 1000000");
-		});
-	});
-
-	describe("prependFrontmatter", () => {
-		const content = "# Test Document\n\nThis is test content.";
-		const frontmatter = "---\ntype: \"document\"\n---\n";
-
-		it("should prepend frontmatter to content", () => {
-			const result = prependFrontmatter(content, frontmatter);
-			expect(result.startsWith(frontmatter)).toBe(true);
-			expect(result).toContain("# Test Document");
-		});
-
-		it("should preserve original content", () => {
-			const result = prependFrontmatter(content, frontmatter);
-			expect(result).toContain("Test Document");
-			expect(result).toContain("test content");
-		});
-
-		it("should remove existing frontmatter if present", () => {
-			const contentWithFM = "---\nold: \"data\"\n---\n# Test\n\nContent";
-			const result = prependFrontmatter(contentWithFM, frontmatter);
-			expect(result).not.toContain('old: "data"');
-			expect(result.indexOf("---")).toBe(0); // Should start with frontmatter
-		});
-
-		it("should replace existing frontmatter", () => {
-			const oldContent = "---\nold: true\n---\nContent here";
-			const newFM = "---\nnew: true\n---\n";
-			const result = prependFrontmatter(oldContent, newFM);
-			expect(result).toContain("new: true");
-			expect(result).not.toContain("old: true");
-		});
-
-		it("should handle content without existing frontmatter", () => {
-			const plain = "Just some plain text.";
-			const result = prependFrontmatter(plain, frontmatter);
-			expect(result.startsWith(frontmatter)).toBe(true);
-			expect(result).toContain("Just some plain text");
-		});
-
-		it("should handle malformed existing frontmatter", () => {
-			const malformed = "---\nincomplete";
-			const result = prependFrontmatter(malformed, frontmatter);
-			// Should handle gracefully
-			expect(result.startsWith(frontmatter)).toBe(true);
-		});
-
-		it("should add newline between frontmatter and content", () => {
-			const result = prependFrontmatter(content, frontmatter);
-			const parts = result.split("\n");
-			// Should have newline after closing ---
-			expect(parts[0]).toBe("---");
-		});
-
-		it("should handle empty content", () => {
-			const result = prependFrontmatter("", frontmatter);
-			expect(result.startsWith(frontmatter)).toBe(true);
-		});
-
-		it("should handle empty frontmatter", () => {
-			const result = prependFrontmatter(content, "");
-			expect(result).toBe("\n" + content);
-		});
-
-		it("should preserve multiple frontmatter fields", () => {
-			const complexFM = "---\ntype: \"document\"\ntags:\n  - tag1\n  - tag2\nscanned: true\n---\n";
-			const result = prependFrontmatter(content, complexFM);
-			expect(result).toContain("type: \"document\"");
-			expect(result).toContain("tag1");
-			expect(result).toContain("scanned: true");
-		});
-
-		it("should trim content after removing old frontmatter", () => {
-			const spaced = "---\nold: data\n---\n\n\n# Heading";
-			const result = prependFrontmatter(spaced, frontmatter);
-			expect(result).not.toContain("\n\n\n# Heading");
-		});
-	});
-
-	describe("Integration tests", () => {
-		it("should generate and prepend frontmatter correctly", () => {
-			const content = "# Chapter 1\n\nLong content here...";
-			const fm = generateFrontmatter(baseScanResult);
-			const result = prependFrontmatter(content, fm);
-
-			expect(result.startsWith("---\n")).toBe(true);
-			expect(result).toContain("# Chapter 1");
-			expect(result).toContain("Long content here");
-		});
-
-		it("should handle full cycle with existing frontmatter", () => {
-			const oldContent = "---\nold: true\n---\n# Chapter 2\n\nContent";
-			const fm = generateFrontmatter(baseScanResult);
-			const result = prependFrontmatter(oldContent, fm);
-
-			expect(result).toContain("type: \"document\"");
-			expect(result).not.toContain("old: true");
-			expect(result).toContain("# Chapter 2");
-		});
-
-		it("should generate frontmatter with complex metadata", () => {
-			const complexResult: DocScanResult = {
-				document: "complex.md",
-				tokens: Array.from({ length: 100 }, (_, i) => ({
-					word: `token${i}`,
-					frequency: Math.floor(Math.random() * 50),
-					positions: [i * 10],
-				})),
-				temporalTerms: [
-					{ term: "past", position: 0, lineNumber: 1, wikilinked: false },
-					{ term: "future", position: 100, lineNumber: 5, wikilinked: false },
-					{ term: "during", position: 200, lineNumber: 10, wikilinked: false },
-				],
-				isChapter: true,
-				wordCount: 5000,
-				uniqueTokenCount: 100,
-			};
-
-			const fm = generateFrontmatter(complexResult, ["important", "research"]);
-			const result = prependFrontmatter("Content", fm);
-
-			expect(result).toContain("is_chapter: true");
-			expect(result).toContain("word_count: 5000");
-			expect(result).toContain("temporal:");
-			expect(result).toContain("important");
-			expect(result).toContain("Content");
 		});
 	});
 });

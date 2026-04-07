@@ -7,8 +7,7 @@
  */
 
 import { Vault, TFile } from "obsidian";
-import { HubEntry, SourceRef, Entity, PluginSettings } from "../../types";
-import { generateEntityId } from "../../utils/idGenerator";
+import { HubEntry, SourceRef, PluginSettings } from "../../types";
 import { logHubCoOccurrence } from "../../protocol/logManager";
 
 interface HubCSVRow {

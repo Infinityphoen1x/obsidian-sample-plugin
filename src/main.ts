@@ -21,6 +21,8 @@ import { registerDescriptionContextMenu } from "./ui/contextMenu/descriptionCont
 export default class MetadataOrganizerPlugin extends Plugin {
 	settings: PluginSettings;
 	managers: Managers;
+	isInitialized: boolean = false;
+	private initializationCallbacks: Array<() => void> = [];
 
 
 	async onload() {
@@ -38,25 +40,49 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		// Handle mobile warnings
 		this.handleMobileWarning();
 
-		// Initialize protocol folder
-		try {
-			await initializeProtocolFolder(this.app.vault, this.settings);
-		} catch (error) {
-			console.error("Warning initializing protocol folder:", error);
-		}
+		// **Register commands EARLY** - before heavy file I/O
+		// This ensures hotkeys.json can be accessed without contention
+		registerMainCommands(this);
+		
+		// Defer heavy initialization to after workspace is ready
+		// This prevents blocking hotkey registration during plugin load
+		this.app.workspace.onLayoutReady(async () => {
+			try {
+				// Initialize protocol folder
+				await initializeProtocolFolder(this.app.vault, this.settings);
 
-		// Initialize all managers
-		this.managers = await initializeManagers(this.app.vault, this.settings);
+				// Initialize all managers (parallelized where possible)
+				this.managers = await initializeManagers(this.app.vault, this.settings);
 
-		// Register commands
-		this.registerAllCommands();
+				// Register metadata-specific commands (requires managers)
+				registerMetadataCommands({
+					plugin: this,
+					settings: this.settings,
+					entityStore: this.managers.entityStore,
+					timelineManager: this.managers.timelineManager,
+					hubManager: this.managers.hubManager,
+					glossaryManager: this.managers.glossaryManager,
+					blacklistManager: this.managers.blacklistManager,
+				});
 
-		// Auto-open main panel on first load
-		this.app.workspace.onLayoutReady(() => {
-			void this.openMainPanel();
+				// Register context menus (requires managers)
+				registerDescriptionContextMenu(this, this.settings, this.managers.entityStore);
+
+				// Auto-open main panel
+				await this.openMainPanel();
+
+				// Mark as initialized and notify all listeners
+				this.isInitialized = true;
+				this.notifyInitializationComplete();
+
+				console.debug("Metadata Organizer Plugin fully initialized");
+			} catch (error) {
+				console.error("Error during deferred initialization:", error);
+				new Notice("Error initializing Metadata Organizer. Check console for details.");
+			}
 		});
 
-		console.debug("Metadata Organizer Plugin loaded successfully");
+		console.debug("Metadata Organizer Plugin loaded (managers will initialize after layout ready)");
 	}
 
 	onunload() {
@@ -90,18 +116,6 @@ export default class MetadataOrganizerPlugin extends Plugin {
 		}
 	}
 
-	private registerAllCommands(): void {
-		registerMainCommands(this);
-		registerMetadataCommands({
-			plugin: this,
-			settings: this.settings,
-			entityStore: this.managers.entityStore,
-			timelineManager: this.managers.timelineManager,
-			blacklistManager: this.managers.blacklistManager,
-		});
-		registerDescriptionContextMenu(this, this.settings, this.managers.entityStore);
-	}
-
 	private async openMainPanel(): Promise<void> {
 		await activateMainPanel(this);
 	}
@@ -116,5 +130,35 @@ export default class MetadataOrganizerPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	/**
+	 * Subscribe to initialization completion
+	 * @param callback Called when plugin is fully initialized
+	 */
+	onInitializationComplete(callback: () => void): void {
+		if (this.isInitialized) {
+			// If already initialized, call immediately
+			callback();
+		} else {
+			// Otherwise, queue the callback
+			this.initializationCallbacks.push(callback);
+		}
+	}
+
+	/**
+	 * Notify all listeners that initialization is complete
+	 */
+	private notifyInitializationComplete(): void {
+		while (this.initializationCallbacks.length > 0) {
+			const callback = this.initializationCallbacks.shift();
+			if (callback) {
+				try {
+					callback();
+				} catch (error) {
+					console.error("Error in initialization callback:", error);
+				}
+			}
+		}
 	}
 }

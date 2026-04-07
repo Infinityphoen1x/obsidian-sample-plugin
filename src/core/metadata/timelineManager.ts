@@ -8,7 +8,6 @@
 import { Vault, TFile } from "obsidian";
 import { TimelineEvent } from "../../types";
 import { generateEntityId } from "../../utils/idGenerator";
-import { parseCSV } from "../../utils/csvParser";
 
 export interface TimelineSnapshot {
 	id: string;
