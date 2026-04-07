@@ -1,4 +1,4 @@
-import { SubMetadataModal, ChildNoteConfig } from './subMetadataModal';
+import { SubMetadataModal } from './subMetadataModal';
 import { createEntity } from '../../core/metadata/__tests__/testHelpers';
 import { App } from 'obsidian';
 

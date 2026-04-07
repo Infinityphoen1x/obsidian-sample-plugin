@@ -5,7 +5,7 @@
  * Supports chunked pagination, group management, tag assignment, and confirmation.
  */
 
-import { App, Modal, Setting, TAbstractFile, TFolder } from "obsidian";
+import { App, Modal, Setting, TFolder } from "obsidian";
 import { Entity } from "../../types";
 
 export interface EntityGroup {
@@ -49,12 +49,6 @@ export class MetadataReviewModal extends Modal {
 	 */
 	private initializeFolders(): void {
 		this.folders = [];
-		const traverse = (folder: TAbstractFile) => {
-			if (folder instanceof TFolder) {
-				this.folders.push(folder);
-				folder.children.forEach(traverse);
-			}
-		};
 
 		// Get all folders from vault
 		const allFiles = this.app.vault.getFiles();

@@ -186,7 +186,7 @@ export class TimelineModal extends Modal {
 				});
 
 				// Group header showing how many events are concurrent
-				const groupHeader = groupEl.createEl('div', {
+				groupEl.createEl('div', {
 					cls: 'concurrent-group-header',
 					text: `⚡ ${group.length} concurrent events`,
 				});

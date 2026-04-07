@@ -196,7 +196,7 @@ export class TimelineRenderer {
 			sourceEl.style.borderTop = "1px solid #ddd";
 			sourceEl.style.paddingTop = "8px";
 
-			const doc = sourceEl.createEl("span", { text: `📄 ${event.source.document}` });
+				sourceEl.createEl("span", { text: `📄 ${event.source.document}` });
 			if (event.source.line) {
 				sourceEl.createEl("span", { text: ` • Line ${event.source.line}` });
 			}

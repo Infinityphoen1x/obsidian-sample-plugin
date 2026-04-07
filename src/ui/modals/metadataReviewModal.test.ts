@@ -1,4 +1,4 @@
-import { MetadataReviewModal, EntityGroup } from './metadataReviewModal';
+import { MetadataReviewModal } from './metadataReviewModal';
 import { createEntity } from '../../core/metadata/__tests__/testHelpers';
 import { App } from 'obsidian';
 

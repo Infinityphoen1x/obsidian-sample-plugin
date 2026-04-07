@@ -31,7 +31,7 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 	const termFrequency = new Map<string, number>();
 	for (const line of lines) {
 		const lineLower = line.toLowerCase();
-		for (const [category, keywords] of Object.entries(TEMPORAL_KEYWORDS)) {
+		for (const [, keywords] of Object.entries(TEMPORAL_KEYWORDS)) {
 			for (const keyword of keywords) {
 				const regex = new RegExp(`\\b${keyword}\\b`, "gi");
 				let match;
@@ -54,7 +54,7 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 		lineNumber++;
 		const lineLower = line.toLowerCase();
 
-		for (const [category, keywords] of Object.entries(TEMPORAL_KEYWORDS)) {
+		for (const [, keywords] of Object.entries(TEMPORAL_KEYWORDS)) {
 			for (const keyword of keywords) {
 				const regex = new RegExp(`\\b${keyword}\\b`, "gi");
 				let match;

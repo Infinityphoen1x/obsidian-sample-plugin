@@ -358,7 +358,7 @@ export class DocumentScanHandler {
 			// Finalize and log summary
 			await this.finalizeScan(file, newCount, updatedCount, updatedContent.length);
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+
 			console.error('Error processing key term selection:', error);
 			await this.finalizeScan(file, 0, 0, 0);
 		}

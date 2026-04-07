@@ -1,5 +1,5 @@
 import { TimelineModal } from './timelineModal';
-import { TimelineEvent, SnapshotTimeline } from '../../types';
+import { TimelineEvent } from '../../types';
 import { App } from 'obsidian';
 
 const mockApp = {

@@ -226,8 +226,6 @@ export class GlossaryManager {
 				(e) => e.name === groupName && e.type === "group"
 			);
 
-			const isNewGroup = !groupEntry;
-
 			if (!groupEntry) {
 				groupEntry = {
 					name: groupName,

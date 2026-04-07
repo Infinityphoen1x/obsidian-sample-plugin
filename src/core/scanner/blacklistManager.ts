@@ -115,11 +115,6 @@ export class BlacklistManager {
 	 * Get blacklist statistics
 	 */
 	getStats(): BlacklistStats {
-		const now = new Date();
-		const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-		const todayMs = today.getTime();
-		const addedToday = this.lastUpdated >= todayMs ? 0 : 0; // Simplified - can be enhanced
-
 		return {
 			total: this.blacklist.size,
 			addedToday: 0, // TODO: Track per-session additions
