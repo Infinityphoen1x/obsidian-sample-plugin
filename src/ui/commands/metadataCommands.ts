@@ -46,6 +46,16 @@ export function registerMetadataCommands(context: MetadataCommandContext): void 
 					console.debug("[Command] Got file from MarkdownView:", file);
 				}
 			}
+
+			// Fallback for custom file views (e.g., docx preview)
+			if (!file) {
+				const activeLeaf = plugin.app.workspace.activeLeaf;
+				const leafFile = (activeLeaf?.view as { file?: TFile } | undefined)?.file;
+				if (leafFile) {
+					file = leafFile;
+					console.debug("[Command] Got file from active leaf view:", file);
+				}
+			}
 			
 			if (!file) {
 				console.debug("[Command] No active file found in any view");

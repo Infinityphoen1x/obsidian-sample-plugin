@@ -370,7 +370,8 @@ export class MainPanelView extends ItemView {
 						if (result instanceof Promise) {
 							await result;
 						} else if (result === false) {
-							throw new Error(`Command not registered: ${command}`);
+							new Notice("Command unavailable for the current file or context.");
+							return;
 						}
 
 						console.debug(`[Button] Command executed successfully`);
