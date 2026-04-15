@@ -144,10 +144,20 @@ export class MetadataReviewModal extends Modal {
 	/**
 	 * Get entities for a specific page
 	 */
-	getPageEntities(group: EntityGroup, pageNum: number): Entity[] {
+	getPageEntities(_group: EntityGroup, pageNum: number): Entity[] {
 		const start = pageNum * this.itemsPerPage;
 		const end = start + this.itemsPerPage;
-		return group.entities.slice(start, end);
+		return this.availableEntities.slice(start, end);
+	}
+
+	getAvailableEntitiesPage(pageNum: number): Entity[] {
+		const start = pageNum * this.itemsPerPage;
+		const end = start + this.itemsPerPage;
+		return this.availableEntities.slice(start, end);
+	}
+
+	getPageCount(): number {
+		return Math.max(1, Math.ceil(this.availableEntities.length / this.itemsPerPage));
 	}
 
 	/**
@@ -163,14 +173,18 @@ export class MetadataReviewModal extends Modal {
 	 * Navigate to next page
 	 */
 	nextPage(): void {
-		this.currentPage++;
+		const maxPage = this.getPageCount() - 1;
+		if (this.currentPage < maxPage) {
+			this.currentPage++;
+		}
 	}
 
 	/**
 	 * Go to specific page
 	 */
 	goToPage(pageNum: number): void {
-		if (pageNum >= 0) {
+		const maxPage = this.getPageCount() - 1;
+		if (pageNum >= 0 && pageNum <= maxPage) {
 			this.currentPage = pageNum;
 		}
 	}
@@ -196,11 +210,7 @@ export class MetadataReviewModal extends Modal {
 
 		// Page counter
 		const pageInfo = contentEl.createEl("div", { cls: "page-info" });
-		const pageCount =
-			this.groups.length > 0
-				? Math.ceil(this.groups.length / this.itemsPerPage)
-				: 1;
-		pageInfo.textContent = `Page ${this.currentPage + 1} of ${pageCount}`;
+		pageInfo.textContent = `Page ${this.currentPage + 1} of ${this.getPageCount()}`;
 
 		// Groups section
 		const groupsEl = contentEl.createEl("div", { cls: "groups-section" });
@@ -212,16 +222,18 @@ export class MetadataReviewModal extends Modal {
 				const groupName = prompt("Enter group name:");
 				if (groupName) {
 					this.createGroup(groupName);
+					this.render();
 				}
 			})
 		);
 
-		// Render groups on current page
-		const startIdx = this.currentPage * this.itemsPerPage;
-		const endIdx = startIdx + this.itemsPerPage;
-		const pageGroups = this.groups.slice(startIdx, endIdx);
+		if (this.groups.length === 0) {
+			groupsEl.createEl("p", { text: "No groups yet. Add a group to begin." });
+		}
 
-		pageGroups.forEach((group) => {
+		const pageEntities = this.getAvailableEntitiesPage(this.currentPage);
+
+		this.groups.forEach((group) => {
 			const groupEl = groupsEl.createEl("div", { cls: "group-item" });
 			groupEl.createEl("h4", { text: group.name });
 
@@ -254,15 +266,36 @@ export class MetadataReviewModal extends Modal {
 			});
 
 			// Add tag input
-			new Setting(groupEl).addText((text) =>
-				text
-					.setPlaceholder("Add tag")
-					.onChange((value) => {
+			new Setting(groupEl).addText((text) => {
+				text.setPlaceholder("Add tag");
+				text.inputEl.addEventListener("keydown", (event) => {
+					if (event.key === "Enter") {
+						const value = text.getValue().trim();
 						if (value) {
 							this.addTagToGroup(group, value);
+							text.setValue("");
+							this.render();
 						}
-					})
-			);
+					}
+				});
+			});
+
+			// Entity selection list (paged)
+			const entityListEl = groupEl.createEl("div", { cls: "group-entity-list" });
+			pageEntities.forEach((entity) => {
+				const rowEl = entityListEl.createEl("div", { cls: "group-entity-row" });
+				const checkbox = rowEl.createEl("input", { type: "checkbox" });
+				checkbox.checked = group.entities.some((e) => e.id === entity.id);
+				checkbox.addEventListener("change", () => {
+					if (checkbox.checked) {
+						this.addEntityToGroup(group, entity);
+					} else {
+						this.removeEntityFromGroup(group, entity);
+					}
+					this.render();
+				});
+				rowEl.createEl("span", { text: entity.name, cls: "group-entity-name" });
+			});
 
 			// Entity count
 			groupEl.createEl("p", {
@@ -277,6 +310,7 @@ export class MetadataReviewModal extends Modal {
 					)
 					.onClick(() => {
 						this.confirmGroup(group);
+						this.render();
 					})
 			);
 		});
@@ -287,11 +321,13 @@ export class MetadataReviewModal extends Modal {
 			.addButton((btn) =>
 				btn.setButtonText("Previous").onClick(() => {
 					this.previousPage();
+					this.render();
 				})
 			)
 			.addButton((btn) =>
 				btn.setButtonText("Next").onClick(() => {
 					this.nextPage();
+					this.render();
 				})
 			);
 

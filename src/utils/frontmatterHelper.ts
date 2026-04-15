@@ -60,7 +60,7 @@ export function parseFrontmatter(markdown: string): {
 /**
  * Serialize frontmatter to YAML
  */
-function serializeFrontmatter(data: FrontmatterData): string {
+export function serializeFrontmatter(data: FrontmatterData): string {
 	const lines: string[] = [];
 
 	for (const [key, value] of Object.entries(data)) {

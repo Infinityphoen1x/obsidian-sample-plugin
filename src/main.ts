@@ -19,8 +19,8 @@ import { registerDescriptionContextMenu } from "./ui/contextMenu/descriptionCont
  * - Cross-reference entities and create relationship maps
  */
 export default class MetadataOrganizerPlugin extends Plugin {
-	settings: PluginSettings;
-	managers: Managers;
+	settings!: PluginSettings;
+	managers!: Managers;
 	isInitialized: boolean = false;
 	private initializationCallbacks: Array<() => void> = [];
 

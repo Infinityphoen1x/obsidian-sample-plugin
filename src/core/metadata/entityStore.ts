@@ -26,6 +26,7 @@ export class EntityStore implements EntityStoreInterface {
 		this.vault = vault;
 		this.protocolFolderPath = protocolFolderPath;
 		this.masterMetadataFile = masterMetadataFile;
+		this.index = buildIndex([]);
 	}
 
 	/**

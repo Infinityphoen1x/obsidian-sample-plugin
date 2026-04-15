@@ -26,6 +26,8 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 	const terms: TemporalTerm[] = [];
 	const lines = text.split("\n");
 	let lineNumber = 0;
+	let offset = 0;
+	const wikilinkRanges = getWikilinkRanges(text);
 
 	// First pass: count frequency of each term
 	const termFrequency = new Map<string, number>();
@@ -36,9 +38,11 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 				const regex = new RegExp(`\\b${keyword}\\b`, "gi");
 				let match;
 				while ((match = regex.exec(lineLower)) !== null) {
-					const isWikilinked =
-						match.index > 0 && text[match.index - 1] === "[" &&
-						text[match.index + keyword.length] === "]";
+					const absoluteIndex = offset + (match.index ?? 0);
+					const isWikilinked = isIndexInsideRange(
+						wikilinkRanges,
+						absoluteIndex
+					);
 					if (!isWikilinked) {
 						const keyLower = keyword.toLowerCase();
 						termFrequency.set(keyLower, (termFrequency.get(keyLower) ?? 0) + 1);
@@ -46,10 +50,12 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 				}
 			}
 		}
+		offset += line.length + 1;
 	}
 
 	// Second pass: create entries with frequency
 	lineNumber = 0;
+	offset = 0;
 	for (const line of lines) {
 		lineNumber++;
 		const lineLower = line.toLowerCase();
@@ -60,16 +66,17 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 				let match;
 
 				while ((match = regex.exec(lineLower)) !== null) {
-					// Check if already wikilinked
-					const isWikilinked =
-						match.index > 0 && text[match.index - 1] === "[" &&
-						text[match.index + keyword.length] === "]";
+					const absoluteIndex = offset + (match.index ?? 0);
+					const isWikilinked = isIndexInsideRange(
+						wikilinkRanges,
+						absoluteIndex
+					);
 
 					if (!isWikilinked) {
 						const keyLower = keyword.toLowerCase();
 						terms.push({
 							term: keyLower,
-							position: match.index,
+							position: absoluteIndex,
 							lineNumber,
 							frequency: termFrequency.get(keyLower) ?? 0,
 							wikilinked: false,
@@ -78,6 +85,7 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 				}
 			}
 		}
+		offset += line.length + 1;
 	}
 
 	return terms;
@@ -92,6 +100,7 @@ export function extractTemporalTerms(text: string): TemporalTerm[] {
 export function wikiLinkTemporalTerms(text: string, terms: TemporalTerm[]): string {
 	let result = text;
 	let offset = 0;
+	const wikilinkRanges = getWikilinkRanges(text);
 
 	// Sort by position to apply replacements correctly
 	const sortedTerms = [...terms].sort((a, b) => a.position - b.position);
@@ -102,6 +111,9 @@ export function wikiLinkTemporalTerms(text: string, terms: TemporalTerm[]): stri
 		const searchStr = term.term;
 		const replaceStr = `[[${term.term}]]`;
 		const position = term.position + offset;
+		if (isIndexInsideRange(wikilinkRanges, position)) {
+			continue;
+		}
 
 		// Check bounds
 		if (position >= 0 && position + searchStr.length <= result.length) {
@@ -111,6 +123,25 @@ export function wikiLinkTemporalTerms(text: string, terms: TemporalTerm[]): stri
 	}
 
 	return result;
+}
+
+function getWikilinkRanges(text: string): Array<{ start: number; end: number }> {
+	const ranges: Array<{ start: number; end: number }> = [];
+	const regex = /\[\[[^\[\]]+\]\]/g;
+	let match: RegExpExecArray | null;
+
+	while ((match = regex.exec(text)) !== null) {
+		ranges.push({ start: match.index, end: match.index + match[0].length });
+	}
+
+	return ranges;
+}
+
+function isIndexInsideRange(
+	ranges: Array<{ start: number; end: number }>,
+	index: number
+): boolean {
+	return ranges.some((range) => index >= range.start && index < range.end);
 }
 
 /**

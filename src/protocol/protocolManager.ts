@@ -5,8 +5,10 @@
  * where all metadata, timelines, logs, and cache files are stored.
  */
 
-import { Vault } from "obsidian";
+import { Vault, TFile } from "obsidian";
 import { PluginSettings } from "../types";
+import { serializeCSV } from "../utils/csvParser";
+import { buildIndex, saveIndex } from "../core/metadata/indexFile";
 
 /**
  * Initialize protocol folder structure
@@ -73,6 +75,9 @@ export async function initializeProtocolFolder(
 			}
 		}
 
+		// Ensure core protocol files exist
+		await ensureProtocolFiles(vault, settings);
+
 		console.log(`Protocol folder initialized at: ${folderName}`);
 	} catch (error) {
 		console.error("Error initializing protocol folder:", error);
@@ -91,9 +96,75 @@ export async function ensureProtocolStructure(
 		const folder = vault.getFolderByPath(settings.protocolFolderName);
 		if (!folder) {
 			await initializeProtocolFolder(vault, settings);
+		} else {
+			await ensureProtocolFiles(vault, settings);
 		}
 	} catch (error) {
 		console.error("Error ensuring protocol folder structure:", error);
+	}
+}
+
+async function ensureProtocolFiles(vault: Vault, settings: PluginSettings): Promise<void> {
+	const folderName = settings.protocolFolderName;
+
+	await ensureFile(
+		vault,
+		`${folderName}/${settings.masterMetadataFile}`,
+		serializeCSV([])
+	);
+
+	await ensureFile(
+		vault,
+		`${folderName}/hub-cross-references.csv`,
+		"id,entities,frequency,sources"
+	);
+
+	await ensureFile(
+		vault,
+		`${folderName}/master-timeline.csv`,
+		"id,name,sourceDocument,createdAt,color,eventCount"
+	);
+
+	await ensureFile(
+		vault,
+		`${folderName}/timeline-events.csv`,
+		"snapshotId,eventId,order,sentence,text,source_document,source_line,temporalTerms,status,isCustom,color"
+	);
+
+	await ensureFile(
+		vault,
+		`${folderName}/blacklist.txt`,
+		"# Blacklisted Words - Do not import as key terms\n# Last updated: " + new Date().toISOString() + "\n\n"
+	);
+
+	await ensureIndexFile(vault, settings);
+}
+
+async function ensureFile(vault: Vault, path: string, content: string): Promise<void> {
+	const existing = vault.getAbstractFileByPath(path);
+	if (existing instanceof TFile) {
+		return;
+	}
+
+	try {
+		await vault.create(path, content);
+	} catch (error) {
+		console.warn(`Failed to create protocol file: ${path}`, error);
+	}
+}
+
+async function ensureIndexFile(vault: Vault, settings: PluginSettings): Promise<void> {
+	const indexPath = `${settings.protocolFolderName}/${settings.indexFile}`;
+	const existing = vault.getAbstractFileByPath(indexPath);
+	if (existing instanceof TFile) {
+		return;
+	}
+
+	try {
+		const emptyIndex = buildIndex([]);
+		await saveIndex(vault, emptyIndex, settings.protocolFolderName, settings.indexFile);
+	} catch (error) {
+		console.warn("Failed to create index file:", error);
 	}
 }
 

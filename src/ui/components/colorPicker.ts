@@ -54,7 +54,7 @@ export class ColorPicker {
 		presetsContainer.style.flexWrap = "wrap";
 
 		// Render preset color buttons
-		Object.entries(PRESET_COLORS).forEach(([name, hex]) => {
+		Object.entries(PRESET_COLORS).forEach(([name, hex]: [string, string]) => {
 			const button = presetsContainer.createEl("button", { cls: "color-preset" });
 			button.style.width = "40px";
 			button.style.height = "40px";

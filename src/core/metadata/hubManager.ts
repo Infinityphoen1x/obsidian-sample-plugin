@@ -152,7 +152,7 @@ export class HubManager {
 								uniqueIds,
 								entry.frequency,
 								sourceDocument,
-								entry.sources.flatMap(s => s.lineNumbers)
+							entry.sources.flatMap((s: SourceRef) => s.lineNumbers)
 							);
 						} catch (logError) {
 							console.debug("Failed to log hub co-occurrence:", logError);

@@ -6,6 +6,7 @@
  */
 
 import { Vault } from "obsidian";
+import * as mammoth from "mammoth";
 
 /**
  * Convert DOCX file to Markdown
@@ -19,10 +20,6 @@ export async function convertDocxToMarkdown(
 	filename: string
 ): Promise<string> {
 	try {
-		// Use require to dynamically load mammoth
-		 
-		const mammoth = require("mammoth");
-		
 		// Convert DOCX to HTML first
 		const result = await mammoth.convertToHtml({ arrayBuffer: docxArrayBuffer });
 		const html = result.value;

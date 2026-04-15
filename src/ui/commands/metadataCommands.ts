@@ -8,6 +8,8 @@ import { BlacklistManager } from "../../core/scanner/blacklistManager";
 import { handleDocumentScan } from "../../core/scanner/scannerHandlers";
 import { handleMetadataReview, handleSubMetadata, handleTimeline } from "../handlers/modalHandlers";
 import { TimelineEvent } from "../../types";
+import { scanMarkdown } from "../../core/scanner/documentScanner";
+import { parseFrontmatter } from "../../utils/frontmatterHelper";
 
 export interface MetadataCommandContext {
 	plugin: Plugin;
@@ -201,36 +203,72 @@ async function handleTimelineCommandExecution(
 	settings: PluginSettings,
 	timelineManager: TimelineManager | null
 ): Promise<void> {
-	// Create mock timeline events from document
-	const mockEvents: TimelineEvent[] = [
-		{
-			id: "evt_1",
-			sentence: "First event in the story",
-			text: "First event in the story",
-			source: { document: file.path, line: 1 },
-			temporalTerms: ["once"],
-			order: 0,
-			status: "draft",
-			isCustom: false,
-		},
-		{
-			id: "evt_2",
-			sentence: "Second event unfolds",
-			text: "Second event unfolds",
-			source: { document: file.path, line: 10 },
-			temporalTerms: ["then"],
-			order: 1,
-			status: "draft",
-			isCustom: false,
-		},
-	];
+	const content = await plugin.app.vault.read(file);
+	const { content: bodyContent } = parseFrontmatter(content);
+	const scanResult = await scanMarkdown(file, bodyContent);
+	const events = buildTimelineEvents(bodyContent, scanResult.temporalTerms, file.path);
+
+	if (events.length === 0) {
+		new Notice("No temporal events found in this document");
+		return;
+	}
 
 	await handleTimeline(
 		plugin.app,
 		plugin.app.vault,
-		mockEvents,
+		events,
 		file.path,
 		settings,
 		timelineManager || undefined
 	);
+}
+
+function buildTimelineEvents(
+	content: string,
+	temporalTerms: Array<{ term: string }>,
+	sourceDocument: string
+): TimelineEvent[] {
+	const termSet = new Set(temporalTerms.map((t) => t.term));
+	const terms = Array.from(termSet);
+	if (terms.length === 0) return [];
+
+	const lines = content.split("\n");
+	const events: TimelineEvent[] = [];
+	const baseId = Date.now();
+	let order = 0;
+
+	const termRegexes = terms.map((term) => ({
+		term,
+		re: new RegExp(`\\b${escapeRegExp(term)}\\b`, "i"),
+	}));
+
+	lines.forEach((line, lineIndex) => {
+		const sentences = line.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 0);
+		sentences.forEach((sentence) => {
+			const matchedTerms = termRegexes
+				.filter(({ re }) => re.test(sentence))
+				.map(({ term }) => term);
+
+			if (matchedTerms.length > 0) {
+				events.push({
+					id: `evt_${baseId}_${order}`,
+					sentence,
+					text: sentence,
+					source: { document: sourceDocument, line: lineIndex + 1 },
+					sourceDocument,
+					temporalTerms: matchedTerms,
+					order,
+					status: "draft",
+					isCustom: false,
+				});
+				order++;
+			}
+		});
+	});
+
+	return events;
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

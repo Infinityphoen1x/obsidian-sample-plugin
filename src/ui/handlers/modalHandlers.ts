@@ -7,7 +7,7 @@
 
 import { App, Notice, Vault, TFile } from 'obsidian';
 import { Entity, PluginSettings, TimelineEvent } from '../../types';
-import { MetadataReviewModal, MetadataReviewResult } from '../modals/metadataReviewModal';
+import { MetadataReviewModal, MetadataReviewResult, EntityGroup } from '../modals/metadataReviewModal';
 import { SubMetadataModal, SubMetadataResult } from '../modals/subMetadataModal';
 import { TimelineModal, TimelineModalResult } from '../modals/timelineModal';
 import { DescriptionModal, DescriptionModalResult } from '../modals/descriptionModal';
@@ -35,8 +35,15 @@ export async function handleMetadataReview(
 			async (result: MetadataReviewResult) => {
 				if (!result.cancelled && result.groups.length > 0) {
 					try {
+						const groupsToApply = result.groups.filter((group) => group.isConfirmed);
+						if (groupsToApply.length === 0) {
+							new Notice("No confirmed groups to apply");
+							resolve();
+							return;
+						}
+
 						// Create groups and folders
-						for (const group of result.groups) {
+						for (const group of groupsToApply) {
 							if (group.folderPath) {
 								const folderPath = group.folderPath.endsWith('/') 
 									? group.folderPath 
@@ -59,11 +66,11 @@ export async function handleMetadataReview(
 										type: 'parent',
 										groupId: `group_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
 										keyTermIds: group.entities.map(e => e.id),
-										tags: group.tags,
+										tags: Array.from(new Set(["parent", ...group.tags])),
 									};
 
 									const fmStr = Object.entries(frontmatter)
-										.map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+										.map(([k, v]: [string, unknown]) => `${k}: ${JSON.stringify(v)}`)
 										.join('\n');
 
 									const content = `---
@@ -87,12 +94,32 @@ ${group.entities.map(e => `| [[${e.name}]] | ${e.frequency} | ${e.sources.map(s 
 							}
 						}
 
+						// Update entity group assignments
+						if (entityStore) {
+							for (const group of groupsToApply) {
+								for (const entity of group.entities) {
+									const existingEntity = entityStore.getEntity(entity.id);
+									if (existingEntity) {
+										const mergedTags = new Set([
+											...(existingEntity.tags || []),
+											...group.tags,
+										]);
+										entityStore.updateEntity(existingEntity.id, {
+											group: group.name,
+											tags: Array.from(mergedTags),
+										});
+									}
+								}
+							}
+							await entityStore.persist();
+						}
+
 						// Step 2: Update source documents with group tags
 						try {
 							const sourceDocUpdates = new Map<string, Set<string>>();
 
 							// Build a map of source documents → tags to add
-							for (const group of result.groups) {
+							for (const group of groupsToApply) {
 								for (const entity of group.entities) {
 									for (const source of entity.sources) {
 										if (!sourceDocUpdates.has(source.document)) {
@@ -127,13 +154,20 @@ ${group.entities.map(e => `| [[${e.name}]] | ${e.frequency} | ${e.sources.map(s 
 							console.error('Error updating source document frontmatter:', error);
 							new Notice(`⚠️ Source document tags may not have been updated: ${error}`);
 						}
-					// Build glossary from groups
-					if (glossaryManager && entities.length > 0) {
+						// Build glossary from groups
+						if (glossaryManager && entities.length > 0) {
 						try {
-							// Note: buildFromGroupsAndEntities expects Group[] from the Group interface
-							// The EntityGroup type from MetadataReviewModal is different
-							// For now, just build from all entities without group structure
-							glossaryManager.buildFromGroupsAndEntities([], entities);
+								const mappedGroups = groupsToApply.map((group) => ({
+									id: `group_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+									name: group.name,
+									folder: group.folderPath
+										? (group.folderPath.endsWith("/") ? group.folderPath : group.folderPath + "/")
+										: `${group.name}/`,
+									keyTermIds: group.entities.map((e) => e.id),
+									tags: group.tags,
+									createdAt: Date.now(),
+								}));
+								glossaryManager.buildFromGroupsAndEntities(mappedGroups, entities);
 							console.debug('Glossary built successfully');
 						} catch (error) {
 							console.warn('Glossary building error (non-fatal):', error);
@@ -141,19 +175,19 @@ ${group.entities.map(e => `| [[${e.name}]] | ${e.frequency} | ${e.sources.map(s 
 					}
 
 					// Log the action
-					await log(
+						await log(
 							vault,
 							settings,
 							'metadata-review',
-							`Organized ${result.groups.length} groups`,
+							`Organized ${groupsToApply.length} groups`,
 							{
-								groups: result.groups.length,
-								totalEntities: result.groups.reduce((sum, g) => sum + g.entities.length, 0),
-								tags: result.groups.flatMap(g => g.tags),
+								groups: groupsToApply.length,
+								totalEntities: groupsToApply.reduce((sum, g) => sum + g.entities.length, 0),
+							tags: groupsToApply.flatMap((g: EntityGroup) => g.tags),
 							}
 						);
 
-						new Notice(`✅ Metadata review complete: ${result.groups.length} groups created`);
+						new Notice(`✅ Metadata review complete: ${groupsToApply.length} groups created`);
 					} catch (error) {
 						console.error('Error handling metadata review:', error);
 						new Notice(`❌ Error creating groups: ${error}`);
@@ -209,8 +243,7 @@ export async function handleSubMetadata(
 								};
 
 								const fmStr = Object.entries(frontmatter)
-									.map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
-									.join('\n');
+								.map(([k, v]: [string, unknown]) => `${k}: ${JSON.stringify(v)}`)
 
 								const content = `---
 ${fmStr}

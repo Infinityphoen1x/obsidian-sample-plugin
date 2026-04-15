@@ -11,8 +11,8 @@
 
 import { App, Notice, TFile, Vault } from 'obsidian';
 import { PluginSettings, DocScanResult } from '../../types';
-import { scanMarkdown, generateFrontmatter } from '../scanner/documentScanner';
-import { wikiLinkTemporalTerms } from '../scanner/temporalTagger';
+import { scanMarkdown } from '../scanner/documentScanner';
+import { generateTemporalTags } from '../scanner/temporalTagger';
 import { convertDocxToMarkdown } from '../scanner/docxConverter';
 import { KeyTermModal } from '../../ui/modals/keyTermModal';
 import { log, logScanError, logEntityError, logScanSummary, ScanErrorType } from '../../protocol/logManager';
@@ -20,6 +20,8 @@ import { EntityStore, getOrCreateEntity } from '../metadata/entityStore';
 import { HubManager } from '../metadata/hubManager';
 import { GlossaryManager } from '../metadata/glossaryManager';
 import { BlacklistManager } from '../scanner/blacklistManager';
+import { parseFrontmatter, serializeFrontmatter, FrontmatterData } from '../../utils/frontmatterHelper';
+import { injectWikilinks } from '../../utils/wikilinker';
 
 interface ScanMetrics {
 	startTime: number;
@@ -114,11 +116,12 @@ export class DocumentScanHandler {
 				return;
 			}
 
-			// Step 2: Scan document for tokens and temporal terms
-			const scanResult = await scanMarkdown(sourceFile, content);
+			// Step 2: Separate existing frontmatter (if any) and scan body only
+			const { frontmatter: existingFrontmatter, content: bodyContent } = parseFrontmatter(content);
+			const scanResult = await scanMarkdown(sourceFile, bodyContent);
 
 			// Step 3: Show key term selection modal
-			await this.showKeyTermModal(sourceFile, content, scanResult);
+			await this.showKeyTermModal(sourceFile, bodyContent, scanResult, existingFrontmatter);
 		} catch (error) {
 			this.scanMetrics.errors.push({
 				type: "unknown",
@@ -248,7 +251,8 @@ export class DocumentScanHandler {
 	private async showKeyTermModal(
 		file: TFile,
 		content: string,
-		scanResult: DocScanResult
+		scanResult: DocScanResult,
+		existingFrontmatter: FrontmatterData
 	): Promise<void> {
 		// Get top tokens by frequency for suggestions
 		const suggestedTerms = scanResult.tokens.slice(0, 50).map((t) => t.word);
@@ -269,7 +273,8 @@ export class DocumentScanHandler {
 							file,
 							content,
 							scanResult,
-							selection.selected
+							selection.selected,
+							existingFrontmatter
 						);
 					} else {
 						new Notice('No key terms selected');
@@ -295,25 +300,29 @@ export class DocumentScanHandler {
 		file: TFile,
 		content: string,
 		scanResult: DocScanResult,
-		selectedKeyTerms: Set<string>
+		selectedKeyTerms: Set<string>,
+		existingFrontmatter: FrontmatterData
 	): Promise<void> {
 		try {
-			let updatedContent = content;
+			let updatedBody = content;
 
-			// Wikilink temporal terms
-			if (scanResult.temporalTerms.length > 0) {
-				updatedContent = wikiLinkTemporalTerms(updatedContent, scanResult.temporalTerms);
+			const temporalTerms = Array.from(
+				new Set(scanResult.temporalTerms.map((t) => t.term))
+			);
+			if (temporalTerms.length > 0) {
+				updatedBody = injectWikilinks(updatedBody, temporalTerms);
 			}
 
-			// Wikilink selected key terms
-			updatedContent = this.wikiLinkKeyTerms(updatedContent, selectedKeyTerms);
+			updatedBody = injectWikilinks(updatedBody, Array.from(selectedKeyTerms));
 
-			// Generate and prepend frontmatter
-			const frontmatter = generateFrontmatter(
+			const mergedFrontmatter = this.buildFrontmatter(
+				existingFrontmatter,
 				scanResult,
-				Array.from(selectedKeyTerms)
+				selectedKeyTerms
 			);
-			updatedContent = frontmatter + updatedContent;
+			const frontmatterBlock = serializeFrontmatter(mergedFrontmatter);
+			const frontmatterLineCount = frontmatterBlock.split("\n").length + 2;
+			const updatedContent = `---\n${frontmatterBlock}\n---\n${updatedBody}`;
 
 			// Write updated content to file
 			try {
@@ -345,11 +354,12 @@ export class DocumentScanHandler {
 				file,
 				content,
 				scanResult,
-				selectedKeyTerms
+				selectedKeyTerms,
+				frontmatterLineCount
 			);
 
 			// Detect hubs (co-occurrences)
-			await this.detectHubs(updatedContent, selectedKeyTerms, file);
+			await this.detectHubs(updatedBody, selectedKeyTerms, file);
 
 			// Log and notify
 			await this.logScan(file, scanResult, selectedKeyTerms, newCount, updatedCount);
@@ -367,27 +377,41 @@ export class DocumentScanHandler {
 	/**
 	 * Wikilink selected key terms in content
 	 */
-	private wikiLinkKeyTerms(content: string, terms: Set<string>): string {
-		let result = content;
+	private buildFrontmatter(
+		existingFrontmatter: FrontmatterData,
+		scanResult: DocScanResult,
+		selectedKeyTerms: Set<string>
+	): FrontmatterData {
+		const existingTags = this.normalizeTags(existingFrontmatter.tags);
+		const temporalTags = generateTemporalTags(scanResult.temporalTerms);
+		const newTags = new Set<string>([
+			...existingTags,
+			...temporalTags,
+			...Array.from(selectedKeyTerms),
+		]);
 
-		for (const term of terms) {
-			const regex = new RegExp(`\\b${term}\\b`, 'gi');
-			const matches = Array.from(result.matchAll(regex));
+		return {
+			...existingFrontmatter,
+			type: existingFrontmatter.type || "document",
+			scanned_date: new Date().toISOString(),
+			is_chapter: scanResult.isChapter,
+			word_count: scanResult.wordCount,
+			tags: Array.from(newTags),
+		};
+	}
 
-			// Replace in reverse order to maintain positions
-			for (let i = matches.length - 1; i >= 0; i--) {
-				const match = matches[i];
-				if (match && match.index !== undefined) {
-					const start = match.index;
-					const end = match.index + match[0].length;
-					const before = result.substring(0, start);
-					const after = result.substring(end);
-					result = `${before}[[${term}]]${after}`;
-				}
-			}
+	private normalizeTags(value: unknown): string[] {
+		if (!value) return [];
+		if (Array.isArray(value)) {
+			return value.map((tag) => String(tag)).filter((tag) => tag.trim().length > 0);
 		}
-
-		return result;
+		if (typeof value === "string") {
+			return value
+				.split(",")
+				.map((tag) => tag.trim())
+				.filter((tag) => tag.length > 0);
+		}
+		return [];
 	}
 
 	/**
@@ -397,7 +421,8 @@ export class DocumentScanHandler {
 		file: TFile,
 		content: string,
 		scanResult: DocScanResult,
-		selectedKeyTerms: Set<string>
+		selectedKeyTerms: Set<string>,
+		lineOffset: number = 0
 	): Promise<{ newCount: number; updatedCount: number }> {
 		let newCount = 0;
 		let updatedCount = 0;
@@ -411,9 +436,13 @@ export class DocumentScanHandler {
 				const token = scanResult.tokens.find((t) => t.word === keyTerm);
 				const lineNumbers = token
 					? token.positions.map(
-							(p: number) => content.substring(0, p).split('\n').length
-					  )
-					: [1];
+							(p: number) => content.substring(0, p).split('\n').length + lineOffset
+						  )
+					: [1 + lineOffset];
+				const baseTags = [
+					...(scanResult.isChapter ? ['chapter'] : ['document']),
+					...scanResult.temporalTerms.map((t) => `temporal:${t.term}`),
+				];
 
 				if (!existing) {
 					try {
@@ -424,10 +453,7 @@ export class DocumentScanHandler {
 								lineNumbers,
 							},
 						];
-						entity.tags = [
-							...(scanResult.isChapter ? ['chapter'] : ['document']),
-							...scanResult.temporalTerms.map((t) => `temporal:${t.term}`),
-						];
+						entity.tags = Array.from(new Set(baseTags));
 						this.entityStore.updateEntity(entity.id, entity);
 						newCount++;
 					} catch (error) {
@@ -444,10 +470,23 @@ export class DocumentScanHandler {
 				} else {
 					try {
 						existing.frequency = (existing.frequency || 1) + 1;
-						existing.sources.push({
-							document: file.path,
-							lineNumbers,
-						});
+						const existingSource = existing.sources.find(
+							(source) => source.document === file.path
+						);
+						if (existingSource) {
+							const mergedLines = new Set([
+								...existingSource.lineNumbers,
+								...lineNumbers,
+							]);
+							existingSource.lineNumbers = Array.from(mergedLines);
+						} else {
+							existing.sources.push({
+								document: file.path,
+								lineNumbers,
+							});
+						}
+						const mergedTags = new Set([...(existing.tags || []), ...baseTags]);
+						existing.tags = Array.from(mergedTags);
 						this.entityStore.updateEntity(existing.id, existing);
 						updatedCount++;
 					} catch (error) {
