@@ -364,19 +364,13 @@ export class MainPanelView extends ItemView {
 
 					// Method 1: Use executeCommandById if available
 					if (typeof appAny.commands?.executeCommandById === "function") {
-						console.debug(`[Button] Command registry available, checking for: ${command}`);
-
-						// Check if command is actually registered
-						const commands = appAny.commands?.commands || {};
-						if (!commands[command]) {
-							throw new Error(`Command not registered: ${command}`);
-						}
-
-						console.debug(`[Button] Command found in registry, executing...`);
+						console.debug(`[Button] Executing command by id: ${command}`);
 						const result = appAny.commands.executeCommandById(command);
 
 						if (result instanceof Promise) {
 							await result;
+						} else if (result === false) {
+							throw new Error(`Command not registered: ${command}`);
 						}
 
 						console.debug(`[Button] Command executed successfully`);

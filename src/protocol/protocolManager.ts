@@ -149,6 +149,9 @@ async function ensureFile(vault: Vault, path: string, content: string): Promise<
 	try {
 		await vault.create(path, content);
 	} catch (error) {
+		if (isAlreadyExistsError(error)) {
+			return;
+		}
 		console.warn(`Failed to create protocol file: ${path}`, error);
 	}
 }
@@ -164,8 +167,15 @@ async function ensureIndexFile(vault: Vault, settings: PluginSettings): Promise<
 		const emptyIndex = buildIndex([]);
 		await saveIndex(vault, emptyIndex, settings.protocolFolderName, settings.indexFile);
 	} catch (error) {
+		if (isAlreadyExistsError(error)) {
+			return;
+		}
 		console.warn("Failed to create index file:", error);
 	}
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+	return error instanceof Error && error.message.toLowerCase().includes("already exists");
 }
 
 /**

@@ -76,12 +76,27 @@ export async function saveIndex(
 		if (existingFile instanceof TFile) {
 			await vault.modify(existingFile, indexJSON);
 		} else {
-			await vault.create(indexPath, indexJSON);
+			try {
+				await vault.create(indexPath, indexJSON);
+			} catch (error) {
+				if (isAlreadyExistsError(error)) {
+					const retryFile = vault.getFileByPath(indexPath);
+					if (retryFile instanceof TFile) {
+						await vault.modify(retryFile, indexJSON);
+						return;
+					}
+				}
+				throw error;
+			}
 		}
 	} catch (error) {
 		console.error("Error saving index file:", error);
 		throw error;
 	}
+}
+
+function isAlreadyExistsError(error: unknown): boolean {
+	return error instanceof Error && error.message.toLowerCase().includes("already exists");
 }
 
 /**
