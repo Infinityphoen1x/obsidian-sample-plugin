@@ -7,7 +7,9 @@
  */
 
 import { TimelineEvent } from "../../types";
-import mermaid from "mermaid";
+
+// Declare mermaid as a global variable (provided by browser/Obsidian)
+declare const mermaid: any;
 
 export interface TimelineRendererOptions {
 	orientation?: "vertical" | "horizontal";
